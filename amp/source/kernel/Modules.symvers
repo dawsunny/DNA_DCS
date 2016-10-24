@@ -1,0 +1,9 @@
+0xba59f4fe	amp_disconnect_peer	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0xfd1c600f	amp_send_sync	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0x72425a33	amp_sys_init	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0xe69f5147	amp_config	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0x884efaed	amp_create_connection	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0x0ff9ca3b	amp_send_async	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0x91caa07c	amp_sys_finalize	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0xbaf730f7	__amp_free_request	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp
+0x670859b7	__amp_alloc_request	/home/xingjing/dcfs3_2.6.16/amp/source/kernel/amp

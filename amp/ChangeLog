@@ -1,0 +1,21 @@
+2005.10.30  fixed all the compile problems in federo 3 (dell notebook)
+
+2005.11.2   fixed all the problem when client connect to server (x86_64)
+
+2005.11.2   the client can send msg to server (x86_64)
+
+2005.11.13  The client can correctly remove from server and server can remove its 
+            module without any problems (x84_64)
+
+2005.11.20  Can successfully support multi client and multi thread in each client (dell notebook)
+
+2005.11.22  In order to reduce the overhead caused by data ready, we commented
+            the phase on upping semaphore when the connection is scheduled
+            (ibm notebook)
+
+2005.11.29  Add the support for userspace lib (ibm notebook).
+
+2005.12.06  Add yield to the serve_in and serve_out thread, to balance the workload. (x86_64)
+
+2005.12.10  Add listen thread for client side (ibm notebook)
+

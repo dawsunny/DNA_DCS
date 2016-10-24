@@ -1,0 +1,10 @@
+md5sum ~/test/temp/1.vmdk ~/VMDK/1.vmdk
+md5sum ~/test/temp/2.vmdk ~/VMDK/2.vmdk
+md5sum ~/test/temp/3.vmdk ~/VMDK/3.vmdk
+md5sum ~/test/temp/4.vmdk ~/VMDK/4.vmdk
+md5sum ~/test/temp/5.vmdk ~/VMDK/5.vmdk
+md5sum ~/test/temp/6.vmdk ~/VMDK/6.vmdk
+md5sum ~/test/temp/7.vmdk ~/VMDK/7.vmdk
+md5sum ~/test/temp/8.vmdk ~/VMDK/8.vmdk
+md5sum ~/test/temp/9.vmdk ~/VMDK/9.vmdk
+md5sum ~/test/temp/10.vmdk ~/VMDK/10.vmdk

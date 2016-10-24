@@ -1,0 +1,37 @@
+# Comment/uncomment the following line to disable/enable debugging
+#DEBUG = y
+
+
+# Add your debugging flag (or not) to CFLAGS
+DEBFLAGS = -O2 -g  
+AMPINC=${LDDINC}/../../include
+CFLAGS += $(DEBFLAGS)
+EXTRA_CFLAGS += -I/home/trf/uml/linux-2.6.14.3-uml/arch/um/include \
+			    -I/home/trf/uml/linux-2.6.14.3-uml/arch/um/kernel/tt/include \
+                            -I/home/trf/uml/linux-2.6.14.3-uml/arch/um/kernel/skas/include \
+			    -I/home/trf/uml/linux-2.6.14.3-uml/arch/um/include/sysdep \
+    			     -I$(AMPINC)
+
+amp-objs := amp_module.o amp_interface.o amp_conn.o amp_help.o amp_protos.o \
+			amp_request.o amp_tcp.o amp_udp.o amp_thread.o
+
+obj-m	:= amp.o
+
+
+KERNELDIR ?= /home/trf/uml/linux-2.6.14.3-uml
+PWD       := $(shell pwd)
+
+modules:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) LDDINC=$(PWD) modules
+
+
+clean:
+	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
+
+depend .depend dep:
+	$(CC) $(CFLAGS) -M *.c > .depend
+
+
+ifeq (.depend,$(wildcard .depend))
+include .depend
+endif
