@@ -1,4 +1,4 @@
-DIR=/DDSS
+DIR=/DNA_DCS
 all:
 	make -C amp/source/userspace
 	make -C client

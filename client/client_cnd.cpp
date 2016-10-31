@@ -54,7 +54,7 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
         printf("\t-w path ---- write file|dir\n");
         printf("\t-r path ---- read file|dir\n");
         //add by bxz
-        printf("\t-t tyoe ---- a: FASTA file; q: FASTQ file\n");
+        printf("\t-t type ---- a: FASTA file; q: FASTQ file\n");
         
         printf("\t-b ---- running on background, it's default option\n");
         printf("\t-f ---- running on foreground\n");
