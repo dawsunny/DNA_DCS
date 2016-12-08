@@ -325,6 +325,9 @@ dcs_s32_t __dcs_clt_get_filename(dcs_s8_t *path)
         sem_post(&file_sem);
         DCS_MSG("__dcs_clt_get_filename one resource is been relesed \n");
         goto EXIT;
+    } else {
+        DCS_ERROR("__dcs_clt_get_filename not a reguler file or file not exists \n");
+        goto EXIT;
     }
 
     //is dir
@@ -376,7 +379,7 @@ dcs_s32_t __dcs_clt_get_filename(dcs_s8_t *path)
             goto EXIT;
         }
 
-        if(S_ISDIR(f_type.st_mode)){ 
+        if(S_ISDIR(f_type.st_mode)){    //dir in the current path
             DCS_MSG("the dir is %s \n", entry->d_name);
             rc = add_to_dirqueue(dirpath);
             if(rc != 0){
@@ -386,6 +389,7 @@ dcs_s32_t __dcs_clt_get_filename(dcs_s8_t *path)
             continue;
         }
 
+        //file in the current path
         memcpy(filename + strlen(filename), entry->d_name, strlen(entry->d_name));
         DCS_MSG("__dcs_clt_get_filename it is a common file: %s\n", filename);
 
@@ -483,7 +487,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     dcs_s32_t write_fd = 0;
     dcs_u64_t fileoffset = 0;
     dcs_u64_t filesize = 0;
-    dcs_s8_t  *meta_path = NULL;
+    //dcs_s8_t  *meta_path = NULL;
     dcs_s8_t *buf = NULL;
     dcs_u32_t len;
     dcs_c2s_req_t c2s_datainfo;
@@ -499,9 +503,10 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         goto EXIT;
     }
     
+    /* //by bxz
     meta_path = get_meta_path(filename);
     
-    if(0 == stat(meta_path, &fm_state)){
+    if(0 == stat(meta_path, &fm_state)){    //the meta file corresponding to filename exists.
         dcs_s32_t meta_fd = open(meta_path, O_RDONLY, 0666);
         if(meta_fd < 0 || meta_fd == 0){
             printf("no such file or open meta file err %d \n",errno);
@@ -516,12 +521,12 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             goto EXIT;
         }
 
-        if(fm_state.st_mtime == f_state.st_mtime){
+        if(fm_state.st_mtime == f_state.st_mtime){  //the mtime stored in metafile equals to the mtime of filename, so already processed
             DCS_ERROR("__dcs_clt_write_file file %s have writed into the ddss system already, thank you!\n", filename);
             sem_post(&finish_sem);
             rc = 0;
             goto EXIT;
-        }else{
+        }else{  //meta file exists but not the latest one, rename the old one and create a new
             char tmp[PATH_LEN];
             memset(tmp, 0, PATH_LEN);
             sprintf(tmp, "%s.v%ld", meta_path, fm_state.st_mtime);
@@ -531,7 +536,9 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             }
         }
     }
+     */
 
+    /* //by bxz
     rc = check_dir(filename);
     if(rc != 0){
         DCS_ERROR("__dcs_clt_write_file check_dir failed, rc:%d\n",rc);
@@ -552,15 +559,9 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         rc = errno;
         goto EXIT;
     }
+     */
 
     filesize = (dcs_u64_t)(f_state.st_size);
-    buf = (dcs_s8_t *)malloc(SUPER_CHUNK_SIZE);
-    if(buf == NULL){
-        DCS_ERROR("__dcs_clt_write_file malloc for read buf err: %d \n", errno);
-        rc = errno;
-        goto EXIT;
-    }
-    memset(buf, 0, SUPER_CHUNK_SIZE);
 
     write_fd = open(filename, O_RDONLY, 0666);
     if(write_fd < 0){
@@ -570,7 +571,15 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     }
     
     if (clt_filetype == DCS_FILETYPE_FASTA) {
-        while((rc = read(write_fd, buf, SUPER_CHUNK_SIZE)) != 0){
+        buf = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
+        if(buf == NULL){
+            DCS_ERROR("__dcs_clt_write_file malloc for read buf err: %d \n", errno);
+            rc = errno;
+            goto EXIT;
+        }
+        memset(buf, 0, FA_CHUNK_SIZE);
+        
+        while((rc = read(write_fd, buf, FA_CHUNK_SIZE)) != 0){
             c2s_datainfo.size = rc;
             c2s_datainfo.offset = fileoffset;
             c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
@@ -582,7 +591,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                 DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
                 goto EXIT;
             }
-            memset(buf, 0, SUPER_CHUNK_SIZE);
+            memset(buf, 0, FA_CHUNK_SIZE);
         }
         
         if(fileoffset == filesize && filesize != 0){
@@ -611,7 +620,18 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             goto EXIT;
         }
     } else if (clt_filetype == DCS_FILETYPE_FASTQ) {
+        buf = (dcs_s8_t *)malloc(FQ_CHUNK_SIZE);
+        if(buf == NULL){
+            DCS_ERROR("__dcs_clt_write_file malloc for read buf err: %d \n", errno);
+            rc = errno;
+            goto EXIT;
+        }
+        memset(buf, 0, FQ_CHUNK_SIZE);
         
+        goto EXIT;
+    } else {
+        DCS_ERROR("__dcs_clt_write_file file type error \n");
+        goto EXIT;
     }
     goto EXIT;
 
@@ -686,7 +706,7 @@ dcs_s32_t clt_send_data(dcs_c2s_req_t c2s_datainfo,
                         dcs_thread_t *threadp)
 {
     dcs_s32_t rc = 0;
-    dcs_u32_t size;
+    dcs_u32_t size;     //total length
     dcs_u32_t server_id = 0;
     dcs_s8_t  *sendbuf = NULL;
     //int size;
@@ -697,14 +717,14 @@ dcs_s32_t clt_send_data(dcs_c2s_req_t c2s_datainfo,
 
     DCS_ENTER("clt_send_data enter \n");
 
-    rc = __amp_alloc_request(&req);
+    rc = __amp_alloc_request(&req);     //req is the last real sending type
     if(rc < 0){
         DCS_ERROR("clt_send_data alloc request err:%d \n", errno);
         rc = errno;
         goto EXIT;
     }
 
-    sendbuf = (dcs_s8_t *)malloc(c2s_datainfo.size);
+    sendbuf = (dcs_s8_t *)malloc(c2s_datainfo.size);  //equals to strlen(buf) + 1 ??
     if(sendbuf == NULL){
         DCS_ERROR("clt_send_data malloc sendbuf err:%d \n", errno);
         rc = errno;
@@ -713,7 +733,7 @@ dcs_s32_t clt_send_data(dcs_c2s_req_t c2s_datainfo,
     memset(sendbuf, 0, c2s_datainfo.size);
     memcpy(sendbuf, buf, c2s_datainfo.size);
 
-    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);  //total length
     //size = DCS_MSGHEAD_SIZE + sizeof(dcs_c2s_req_t);
     reqmsgp = (amp_message_t *)malloc(size);
     if(!reqmsgp){
@@ -742,9 +762,9 @@ dcs_s32_t clt_send_data(dcs_c2s_req_t c2s_datainfo,
 
     DCS_MSG("clt_send_data init iov to send buf \n");
     DCS_MSG("clt_send_data buf size :%d \n", c2s_datainfo.size);
-    req->req_iov->ak_addr = sendbuf;
+    req->req_iov->ak_addr = sendbuf;    //ak_addr is the addr of the sendbuf
     //DCS_MSG("1 \n");
-    req->req_iov->ak_len = c2s_datainfo.size;
+    req->req_iov->ak_len = c2s_datainfo.size;   //ak_len is the length of sendbuf
     //DCS_MSG("2 \n");
     req->req_iov->ak_offset = 0;
     //DCS_MSG("3 \n");
@@ -1643,7 +1663,7 @@ EXIT:
     return rc;
 }
 
-//meta_path + pathname
+//meta_path: CLIET_MD_PATH + pathname
 //meta_path is the path client created to store meta data of the files
 dcs_s8_t *get_meta_path(dcs_s8_t *pathname)
 {

@@ -48,6 +48,7 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
         goto EXIT;
     }
 
+    /*
     rc = __dcs_server_maptable_init();
     if(rc != 0){
         DCS_ERROR("main init maptable err \n");
@@ -61,7 +62,8 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
     }
     
     rc = __dcs_server_init_diskinfo();
-
+*/
+    
     rc = __dcs_create_server_thread();
     if(rc != 0){
         DCS_ERROR("main create thread error \n");

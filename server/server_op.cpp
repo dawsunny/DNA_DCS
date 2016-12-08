@@ -30,6 +30,7 @@
 #include <sys/uio.h>
 #include <string.h>
 #include <semaphore.h>
+#include <openssl/sha.h>
 
 dcs_u32_t sign_num = 0;
 dcs_u64_t diskinfo[DCS_COMPRESSOR_NUM];
@@ -124,14 +125,14 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     //dcs_u32_t tmp_mark[DCS_COMPRESSOR_NUM];
     dcs_u32_t *tmp_mark = NULL;
     dcs_u32_t mark[DCS_COMPRESSOR_NUM];
-    dcs_u32_t master_cache_id[DCS_MASTER_NUM];
-    dcs_u32_t sha_num[DCS_MASTER_NUM];
-    dcs_u8_t  *tmp_sha_v[DCS_MASTER_NUM];
-    dcs_u8_t  *sha_v[DCS_MASTER_NUM];
+    //dcs_u32_t master_cache_id[DCS_MASTER_NUM];
+    //dcs_u32_t sha_num[DCS_MASTER_NUM];
+    //dcs_u8_t  *tmp_sha_v[DCS_MASTER_NUM];
+    //dcs_u8_t  *sha_v[DCS_MASTER_NUM];
     amp_message_t *repmsgp  = NULL;
-    amp_request_t *req2m[DCS_MASTER_NUM];
-    amp_message_t *reqmsgp2m[DCS_MASTER_NUM];
-    amp_message_t *repmsgp2m[DCS_MASTER_NUM];
+    //amp_request_t *req2m[DCS_MASTER_NUM];
+    //amp_message_t *reqmsgp2m[DCS_MASTER_NUM];
+    //amp_message_t *repmsgp2m[DCS_MASTER_NUM];
 
     amp_request_t *req2d = NULL;
     amp_message_t *reqmsgp2d = NULL;
@@ -139,12 +140,17 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     dcs_datapos_t *data_pos = NULL;
 
     dcs_msg_t *msgp = NULL;
-    chunk_info_t *chunk_detail = NULL;
-    sha_array_t *sha_array = NULL;
+    //chunk_info_t *chunk_detail = NULL;
+    //sha_array_t *sha_array = NULL;
     dcs_datamap_t *datamap = NULL;
     
 
     DCS_ENTER("__dcs_write_server enter \n");
+    
+    for(i=0; i<DCS_COMPRESSOR_NUM; i++){
+        mark[i] = 0;
+    }
+    /*
     for(i=0; i<DCS_MASTER_NUM; i++){
         tmp_sha_v[i] = NULL;
         sha_v[i] = NULL;
@@ -152,7 +158,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         reqmsgp2m[i] = NULL;
         repmsgp2m[i] = NULL;
     }
-
+*/
     
     
     //get msg info from client msg
@@ -170,6 +176,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
 
+    /*
     //do chunking job, fix or var chunk*
     if(server_chunk_type == FIX_CHUNK){
         chunk_detail = __dcs_get_fix_chunk((dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len, fileoffset);
@@ -218,9 +225,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         repmsgp2m[i] = NULL;
     }
 
-    for(i=0; i<DCS_COMPRESSOR_NUM; i++){
-        mark[i] = 0;
-    }
+    
 
     for(i=0; i<DCS_MASTER_NUM; i++){
         tmp_sha_v[i] = (dcs_u8_t *)malloc(SHA_LEN*total_sha_num);
@@ -297,11 +302,11 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         DCS_MSG("__dcs_write_server init iov to send sha value \n");
 
         req2m[i]->req_iov->ak_addr = sha_v[i];
-        /*
-        dcs_s8_t *tmp;
-        tmp = (dcs_s8_t *)sha_v[i];
-        DCS_MSG("the len of sha_v %ld \n", strlen(tmp));
-        */
+     
+        //dcs_s8_t *tmp;
+        //tmp = (dcs_s8_t *)sha_v[i];
+        //DCS_MSG("the len of sha_v %ld \n", strlen(tmp));
+     
         if(req2m[i]->req_iov->ak_addr == NULL){
             DCS_ERROR("__dcs_write_server ak_addr is null \n");
         }
@@ -382,6 +387,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
             }
         }
 
+     
         for(j=0; j<DCS_COMPRESSOR_NUM; j++){
             //DCS_MSG("__dcs_write_server %dth mark is %d, tmp_mark is %d \n", j, mark[j], tmp_mark[j]);
             mark[j] = mark[j] + tmp_mark[j];
@@ -400,8 +406,10 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
             repmsgp2m[i] = NULL;
         }
     }
+     */
 
-    //*do the routing and make decision on which target compressor data will route to
+    /*
+    //do the routing and make decision on which target compressor data will route to
     if(ROUTING_ON == 1)
         target = __dcs_server_data_routing(mark);
     else
@@ -411,9 +419,21 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         DCS_ERROR("__dcs_write_server routing err:%d \n", target);
         goto EXIT;
     }
-
+     */
+    
     //DCS_MSG("__dcs_write_server the hishest mark is:%d and the target compressor is:%d \n",
                 //highest, target);
+    
+    //add by bxz
+    tmpsha = (dcs_u8_t *)malloc(SHA_LEN);
+    if(tmpsha == NULL){
+        DCS_ERROR("__dcs_write_server malloc for tmpsha err:%d \n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    SHA1((dcs_u8_t *)req->req_iov->ak_addr, req->req_iov->ak_len, tmpsha);
+    target = tmpsha[0] % DCS_COMPRESSOR_NUM; //no need to + 1 because already + 1 when send data
+    //add by bxz end
 
     if(rc != 0){
         DCS_ERROR("__dcs_write_server update master err:%d \n", rc);
@@ -455,7 +475,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     }
 
     //bufsize = bufsize + strlen((dcs_s8_t *)sha_array);
-    bufsize = bufsize + total_sha_num*sizeof(sha_array_t);
+    //bufsize = bufsize + total_sha_num*sizeof(sha_array_t);
+    bufsize = bufsize + SHA_LEN;
     buf = (dcs_s8_t *)malloc(bufsize);
     if(buf == NULL){
         DCS_ERROR("__dcs_write_server malloc data buf for compressor err:%d \n", errno);
@@ -466,8 +487,10 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
 
     DCS_MSG("__dcs_write_server bufsize is %d \n", bufsize);
     /*send FP + data to compressor*/
-    memcpy(buf, sha_array, total_sha_num*sizeof(sha_array_t));
-    memcpy(buf + total_sha_num*sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
+    //memcpy(buf, sha_array, total_sha_num*sizeof(sha_array_t));
+    //memcpy(buf + total_sha_num*sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
+    memcpy(buf, tmpsha, SHA_LEN);
+    memcpy(buf + SHA_LEN, req->req_iov->ak_addr, req->req_iov->ak_len);
 
     //DCS_MSG("__dcs_write_server ready to send data to the %dth compressor \n", (target + 1));
     req2d->req_iov->ak_addr = buf;
@@ -511,7 +534,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     }
 
     //merge the data position and other chunkinfo to chunk mapping info
-    datamap = __dcs_server_chunkinfo_merge(data_pos, sha_array, total_sha_num);
+    //datamap = __dcs_server_chunkinfo_merge(data_pos, sha_array, total_sha_num);
 
     //buf the chunk mapping info until a file is finished
     rc = __dcs_server_insert_mapinfo(datamap, fileinode, timestamp, fromid, total_sha_num);
@@ -521,12 +544,13 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     }
 
     //update target bloom filter in master
-    rc = __dcs_server_updata_master(target, master_cache_id);
+    //rc = __dcs_server_updata_master(target, master_cache_id);
     if(rc != 0){
         DCS_ERROR("__dcs_write_server err:%d \n", rc);
         goto EXIT;
     }
 
+    //send reply to client
     size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
     repmsgp = (amp_message_t *)malloc(size);
     if(repmsgp == NULL){
@@ -570,6 +594,7 @@ EXIT:
     */
 
     //DCS_MSG("1 \n");
+    /*
     if(chunk_detail != NULL){
         if(sha_array != NULL){
             free(sha_array);
@@ -579,6 +604,7 @@ EXIT:
         free(chunk_detail);
         chunk_detail = NULL;
     }
+     */
 
     if(tmpsha != NULL){
         free(tmpsha);
@@ -593,12 +619,14 @@ EXIT:
     }
     */
 
+    /*
     for(i=0; i<DCS_MASTER_NUM; i++){
         if(tmp_sha_v[i] != NULL){
             free(tmp_sha_v[i]);
             tmp_sha_v[i] = NULL;
         }
     }
+     */
    //DCS_MSG("3 \n");
 
     /*
@@ -610,8 +638,9 @@ EXIT:
     }
     */
 
+    /*
    //DCS_MSG("4 \n");
-    /*free request msg to master*/
+    //free request msg to master
     for(i=0; i<DCS_MASTER_NUM; i++){
         if(reqmsgp2m[i] != NULL){
             free(reqmsgp2m[i]);
@@ -620,7 +649,7 @@ EXIT:
     }
 
    //DCS_MSG("5 \n");
-    /*free reply msg from master*/
+    //free reply msg from master
     for(i=0; i<DCS_MASTER_NUM; i++){
         if(repmsgp2m[i] != NULL){
             free(repmsgp2m[i]);
@@ -629,7 +658,7 @@ EXIT:
     }
 
    //DCS_MSG("6 \n");
-    /*free request to master*/
+    //free request to master
     for(i=0; i<DCS_MASTER_NUM; i++){
         if(req2m[i] != NULL){
             if(req2m[i]->req_iov != NULL){
@@ -641,6 +670,7 @@ EXIT:
             req2m[i] = NULL;
         }
     }
+     */
 
    //DCS_MSG("7 \n");
     if(reqmsgp2d != NULL){

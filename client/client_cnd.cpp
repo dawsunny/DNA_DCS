@@ -23,7 +23,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-amp_comp_context_t  *clt_comp_context;
+amp_comp_context_t  *clt_comp_context;  //inited in clt_init_com
 dcs_u32_t         clt_this_id;
 dcs_u32_t         clt_num;
 dcs_u32_t         server_num = DCS_SERVER_NUM;
@@ -118,7 +118,7 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
     }
 
     if(daemonlize){
-        __dcs_daemonlize();
+        //__dcs_daemonlize();
     }
 
     /*

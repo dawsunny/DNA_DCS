@@ -54,6 +54,10 @@ enum dcs_comp_type{
 #define SUPER_CHUNK_SIZE (1*1024*1024)
 #define CONTAINER_SIZE   (8*1024*1024)
 
+//by bxz
+#define FA_CHUNK_SIZE (18*1024)
+#define FQ_CHUNK_SIZE (10*1024*1024)
+
 /*bloom filter size*/
 /*multiple of 4k*/
 #define MASTER_BLOOM_SIZE  (1024*1024*128)
