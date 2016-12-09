@@ -554,6 +554,8 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     */
+    
+    /*
     //search the index, find correspoding container id
     con_id = dcs_query_index(sha, chunk_num);
     //find the champion container which most sample hit it
@@ -565,6 +567,8 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         rc = errno;
         goto EXIT;
     }
+     
+     */
 
     size = sizeof(dcs_msg_t) + AMP_MESSAGE_HEADER_LEN + sizeof(dcs_datapos_t)*chunk_num ;
     repmsgp = (amp_message_t *)malloc(size);
@@ -586,7 +590,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     msgp->fromtype = DCS_NODE;
     msgp->fromid = compressor_this_id;
     msgp->u.d2s_reply.chunk_num = chunk_num;
-    memcpy(msgp->buf, data_pos, sizeof(dcs_datapos_t)*chunk_num);
+    //memcpy(msgp->buf, data_pos, sizeof(dcs_datapos_t)*chunk_num);
 
     if(req->req_iov){
         __compressor_freebuf(req->req_niov, req->req_iov);

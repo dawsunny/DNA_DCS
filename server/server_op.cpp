@@ -159,7 +159,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         repmsgp2m[i] = NULL;
     }
 */
-    
+    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+
     
     //get msg info from client msg
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
@@ -478,7 +479,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
 
     //bufsize = bufsize + strlen((dcs_s8_t *)sha_array);
     //bufsize = bufsize + total_sha_num*sizeof(sha_array_t);
-    bufsize = bufsize + SHA_LEN;
+    bufsize = bufsize + sizeof(sha_array_t);
     buf = (dcs_s8_t *)malloc(bufsize);
     if(buf == NULL){
         DCS_ERROR("__dcs_write_server malloc data buf for compressor err:%d \n", errno);
@@ -532,7 +533,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     if(data_pos == NULL){
         DCS_ERROR("__dcs_write_server get data_pos from reply msg err");
         rc = -1;
-        goto EXIT;
+        //goto EXIT;
     }
 
     //merge the data position and other chunkinfo to chunk mapping info
