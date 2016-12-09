@@ -55,7 +55,7 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
 
     //rc = __dcs_compressor_bloom_init();
 #ifdef __DCS_TIER_BLOOM__
-    rc = __dcs_tier_bloom_init();
+    //rc = __dcs_tier_bloom_init();
     if(rc != 0){
         DCS_ERROR("main __dcs_tier_bloom_init\n");
         goto EXIT;

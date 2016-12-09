@@ -9,5 +9,5 @@ dir=/DNA_DCS/conf
 addr="10.18.129.171"
 echo $addr > $dir/client_addr
 echo $addr > $dir/server_addr
-echo $addr > $dir/master_addr
+#echo $addr > $dir/master_addr
 echo $addr > $dir/compressor_addr

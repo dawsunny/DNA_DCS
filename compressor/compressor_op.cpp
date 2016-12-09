@@ -554,11 +554,11 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     */
-    /*search the index, find correspoding container id*/
+    //search the index, find correspoding container id
     con_id = dcs_query_index(sha, chunk_num);
-    /*find the champion container which most sample hit it */
+    //find the champion container which most sample hit it
     container_id = find_champion_container(con_id);
-    /*dcslication*/
+    //dcslication
     data_pos = dcslication(chunk_info, datap, chunk_num, container_id, threadp);
     if(data_pos == NULL){
         DCS_ERROR("__dcs_compressor_write get sample fp err:%d \n", rc);
@@ -612,6 +612,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         DCS_ERROR("__dcs_compressor_write send reply msg err:%d \n", rc);
         goto EXIT;
     }
+    printf("got msg: %s$\n", datap);
     
 EXIT:
     if(sha != NULL){

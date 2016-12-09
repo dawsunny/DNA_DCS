@@ -123,7 +123,7 @@ EXIT:
 
 /*init the connection
  * 1. create connection between client server
- * 2. create connection between server master
+ * //2. create connection between server master
  * 3. create connection between server compressor
  */
 dcs_s32_t __dcs_server_init_com()
@@ -137,11 +137,13 @@ dcs_s32_t __dcs_server_init_com()
     DCS_ENTER("__dcs_server_init_com enter \n");
 
     FILE *fp;
+    /* //bxz
     if((fp = fopen(MASTER_ADDR_CONF, "r")) == NULL){
         DCS_ERROR("__dcs_server_init_com open master_addr configuration err:%d \n",errno);
         rc = errno;
         goto EXIT;
     }
+     */
 
     INIT_LIST_HEAD(&request_queue);
     sem_init(&request_sem, 0, 0);
@@ -172,6 +174,7 @@ dcs_s32_t __dcs_server_init_com()
         goto EXIT;
     }
 
+    /* //bxz
     for(i=0; i<DCS_MASTER_NUM; i++){
         memset(con_addr, 0, ADDR_LEN);
         if(fgets(con_addr, ADDR_LEN, fp)){
@@ -206,6 +209,7 @@ dcs_s32_t __dcs_server_init_com()
         }
     }
     fclose(fp);
+     */
 
     if((fp = fopen(COMPRESSOR_ADDR_CONF, "r")) == NULL){
         DCS_ERROR("__dcs_server_init_com open compressor_addr configuration err:%d \n",errno);

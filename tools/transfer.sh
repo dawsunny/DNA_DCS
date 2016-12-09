@@ -9,7 +9,7 @@ ALL_FILES="./include/*.h"
 ALL_FILES+=" ./client/*.cpp"
 ALL_FILES+=" ./server/*.cpp"
 ALL_FILES+=" ./compressor/*.cpp"
-ALL_FILES+=" ./master/*.cpp"
+#ALL_FILES+=" ./master/*.cpp"
 
 sed -i 's/DEDUPER/COMPRESSOR/g' $ALL_FILES
 sed -i 's/DEDUP/DCS/g' $ALL_FILES

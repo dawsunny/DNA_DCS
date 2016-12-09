@@ -46,6 +46,7 @@ dcs_s32_t __dcs_create_server_thread(void)
 
     DCS_MSG("__dcs_create_server_thread thread num:%d \n", DCS_SERVER_THREAD_NUM);
     
+    /*
     threadp = &upload_thread;
     threadp->seqno = 0;
     threadp->is_up = 0;
@@ -58,6 +59,7 @@ dcs_s32_t __dcs_create_server_thread(void)
         goto EXIT;
     }
     sem_wait(&threadp->startsem);
+     */
 
     for(i=0; i<DCS_SERVER_THREAD_NUM; i++){
         threadp = &server_thread[i];
@@ -78,6 +80,7 @@ dcs_s32_t __dcs_create_server_thread(void)
         sem_wait(&threadp->startsem);
     }
 
+    /*
     threadp = &collect_thread;
     threadp->seqno = 0;
     threadp->is_up = 0;
@@ -94,6 +97,7 @@ dcs_s32_t __dcs_create_server_thread(void)
     }
 
     sem_wait(&threadp->startsem);
+     */
 
 EXIT:
     DCS_LEAVE("__dcs_create_server_thread leave \n");

@@ -109,11 +109,11 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     dcs_s32_t power = 0;
     dcs_u32_t seqno = 0;
     dcs_u32_t fromid = 0;
-    dcs_u64_t fileinode;
-    dcs_u64_t timestamp;
-    dcs_u64_t fileoffset;
+    dcs_u64_t fileinode = 0;
+    dcs_u64_t timestamp = 0;
+    dcs_u64_t fileoffset = 0;
     dcs_u32_t bufsize = 0;
-    dcs_u32_t total_sha_num;
+    dcs_u32_t total_sha_num = 0;
     dcs_u32_t sign = 0;
     dcs_u32_t finish = 0;
     dcs_u8_t  *tmpsha = NULL;
@@ -432,7 +432,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     SHA1((dcs_u8_t *)req->req_iov->ak_addr, req->req_iov->ak_len, tmpsha);
-    target = tmpsha[0] % DCS_COMPRESSOR_NUM; //no need to + 1 because already + 1 when send data
+    //target = tmpsha[0] % DCS_COMPRESSOR_NUM; //no need to + 1 because already + 1 when send data
+    target = fileinode % DCS_COMPRESSOR_NUM; //no need to + 1 because already + 1 when send data
     //add by bxz end
 
     if(rc != 0){
@@ -464,7 +465,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     msgp->fromid = server_this_id;
     msgp->fromtype = DCS_SERVER;
     msgp->optype = DCS_WRITE;
-    msgp->u.s2d_req.chunk_num = total_sha_num;
+    //msgp->u.s2d_req.chunk_num = total_sha_num;
+    msgp->u.s2d_req.chunk_num = 1;  //by bxz
     msgp->u.s2d_req.scsize = bufsize;
 
     req2d->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
@@ -537,7 +539,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     //datamap = __dcs_server_chunkinfo_merge(data_pos, sha_array, total_sha_num);
 
     //buf the chunk mapping info until a file is finished
-    rc = __dcs_server_insert_mapinfo(datamap, fileinode, timestamp, fromid, total_sha_num);
+    //rc = __dcs_server_insert_mapinfo(datamap, fileinode, timestamp, fromid, total_sha_num);
     if(rc != 0){
         DCS_ERROR("__dcs_write_server insert mapinfo err:%d \n", rc);
         goto EXIT;
