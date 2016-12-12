@@ -538,12 +538,13 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
 
     tmpdatap = (dcs_s8_t *)((dcs_s8_t *)req->req_iov->ak_addr + chunk_num*sizeof(sha_array_t));
     
-    datap = (dcs_s8_t *)malloc(datasize);
+    datap = (dcs_s8_t *)malloc(datasize + 1);   //modified(+1) by bxz
     if(datap == NULL){
         DCS_ERROR("malloc for datap err:%d \n", errno);
         rc = errno;
         goto EXIT;
     }
+    memset(datap, 0, datasize + 1);     //by bxz
     memcpy(datap, tmpdatap, datasize);
 
     //DCS_MSG("6\n");
