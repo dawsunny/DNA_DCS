@@ -492,8 +492,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     /*send FP + data to compressor*/
     //memcpy(buf, sha_array, total_sha_num*sizeof(sha_array_t));
     //memcpy(buf + total_sha_num*sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
-    memcpy(buf, tmpsha, SHA_LEN);
-    memcpy(buf + SHA_LEN, req->req_iov->ak_addr, req->req_iov->ak_len);
+    memcpy(buf, tmpsha, sizeof(sha_array_t));
+    memcpy(buf + sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
 
     //DCS_MSG("__dcs_write_server ready to send data to the %dth compressor \n", (target + 1));
     req2d->req_iov->ak_addr = buf;
