@@ -20,8 +20,8 @@
 #define DCS_UPLOAD 9 
 
 //add by bxz
-#define DCS_FILETYPE_FASTA 0
-#define DCS_FILETYPE_FASTQ 1
+#define DCS_FILETYPE_FASTA 100
+#define DCS_FILETYPE_FASTQ 200
 
 enum dcs_comp_type{
     DCS_CLIENT = 1,

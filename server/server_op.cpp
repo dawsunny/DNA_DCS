@@ -109,6 +109,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     dcs_s32_t power = 0;
     dcs_u32_t seqno = 0;
     dcs_u32_t fromid = 0;
+    dcs_u32_t filetype = 0;     //by bxz
     dcs_u64_t fileinode = 0;
     dcs_u64_t timestamp = 0;
     dcs_u64_t fileoffset = 0;
@@ -166,6 +167,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
     seqno = msgp->seqno;
     fromid = msgp->fromid;
+    filetype = msgp->filetype;      //by bxz
     fileinode = msgp->u.c2s_req.inode;
     timestamp = msgp->u.c2s_req.timestamp;
     fileoffset = msgp->u.c2s_req.offset;
@@ -466,6 +468,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     msgp->fromid = server_this_id;
     msgp->fromtype = DCS_SERVER;
     msgp->optype = DCS_WRITE;
+    msgp->filetype = filetype;      //by bxz
     //msgp->u.s2d_req.chunk_num = total_sha_num;
     msgp->u.s2d_req.chunk_num = 1;  //by bxz
     msgp->u.s2d_req.scsize = bufsize;
@@ -585,6 +588,13 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+    if (filetype == DCS_FILETYPE_FASTA) {
+        printf("got file type: FASTA!\n");
+    } else if (filetype == DCS_FILETYPE_FASTQ) {
+        printf("got file type: FASTQ!\n");
+    } else {
+        printf("filetype error!\n");
+    }
 
 EXIT:
     //DCS_MSG("__dcs_write_server before free space \n");

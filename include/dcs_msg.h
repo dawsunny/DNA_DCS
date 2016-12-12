@@ -135,6 +135,7 @@ struct __dcs_msg
     dcs_u32_t fromtype;   /*from type*/
     dcs_u32_t optype;     /*operation type*/
     dcs_u32_t ack;        /*common ack usual 1 means sucess*/
+    dcs_u32_t filetype;  //FASTA(0)/FASTQ(1)   ***by bxz
     union{
         /*client related*/
         dcs_c2s_req_t c2s_req;               

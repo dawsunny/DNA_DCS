@@ -750,6 +750,7 @@ dcs_s32_t clt_send_data(dcs_c2s_req_t c2s_datainfo,
     msgp->fromid = clt_this_id;
     msgp->fromtype = DCS_CLIENT;
     msgp->optype = clt_optype;
+    msgp->filetype = clt_filetype;  //by bxz
     msgp->u.c2s_req = c2s_datainfo;
 
     

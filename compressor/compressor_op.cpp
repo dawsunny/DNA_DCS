@@ -485,6 +485,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     dcs_s32_t rc = 0;
     dcs_s32_t i = 0;
     dcs_u32_t size = 0;
+    dcs_u32_t filetype = 0;     //by bxz
     dcs_u32_t chunk_num = 0;
     dcs_u32_t datasize = 0;
     dcs_u64_t container_id = 0;
@@ -503,6 +504,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
 
     /*get msg from the req*/
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
+    filetype = msgp->filetype;      //by bxz
     chunk_num = msgp->u.s2d_req.chunk_num;
     datasize = msgp->u.s2d_req.scsize;
 
@@ -617,6 +619,13 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     printf("got msg: %s$\n", datap);
+    if (filetype == DCS_FILETYPE_FASTA) {
+        printf("got file type: FASTA!\n");
+    } else if (filetype == DCS_FILETYPE_FASTQ) {
+        printf("got file type: FASTQ!\n");
+    } else {
+        printf("filetype error!\n");
+    }
     
 EXIT:
     if(sha != NULL){

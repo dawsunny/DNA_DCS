@@ -32,7 +32,7 @@ dcs_u32_t         clt_optype;
 dcs_s8_t          *clt_pathname = NULL;
 
 //add by bxz
-dcs_s32_t       clt_filetype;
+dcs_u32_t       clt_filetype;
 
 /* client parse paramatter */
 dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
