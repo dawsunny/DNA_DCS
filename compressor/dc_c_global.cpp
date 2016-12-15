@@ -12,6 +12,8 @@
 #include "dc_c_io.h"
 #include "dc_c_thread.h"
 
+#include <dc_c_global.h>
+
 void
 print_time(char *explain, struct timeval start_time, struct timeval end_time)
 {
@@ -25,7 +27,7 @@ print_time(char *explain, struct timeval start_time, struct timeval end_time)
 }
 
 dc_s32_t
-main( dc_s32_t argc, dc_s8_t *argv[] )
+dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
 {
 	dc_s32_t rc = 0;
     struct timeval start_time, end_time;
@@ -36,22 +38,22 @@ main( dc_s32_t argc, dc_s8_t *argv[] )
 
     gettimeofday( &glo_start_time, NULL );
 
-	rc = check_arg( argc, argv );   //check whether file/dir exist
+	rc = dc_c_check_arg( argc, argv );   //check whether file/dir exist
 	if( rc )
 	{
-		DC_ERROR("error: check_arg return error\n");
+		DC_ERROR("error: dc_c_check_arg return error\n");
 		goto EXIT;
 	}
 
     gettimeofday( &start_time, NULL );
-	rc = read_ref_file( argv[argc - 2] );   //read sequences to string array
+	rc = dc_c_read_ref_file( argv[argc - 2] );   //read sequences to string array
 	if( rc )
 	{
-		DC_ERROR("error: read_ref_file return error\n");
+		DC_ERROR("error: dc_c_read_ref_file return error\n");
 		goto EXIT;
 	}
     gettimeofday( &end_time, NULL );
-    print_time("read_ref_file", start_time, end_time);
+    print_time("dc_c_read_ref_file", start_time, end_time);
 
     gettimeofday( &start_time, NULL );
 	rc = save_seed_loc();    //save 10-mer locations to struct array
@@ -79,7 +81,7 @@ main( dc_s32_t argc, dc_s8_t *argv[] )
 
 EXIT:
 	thread_pool_destroy();  //destroy threads
-	free_memory();      //free the allocated memory
+	dc_c_free_memory();      //free the allocated memory
 
 //    tar_compressed_files();  //tar -cjf /tmp/dna_compress/out/...
 

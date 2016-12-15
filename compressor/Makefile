@@ -2,7 +2,7 @@ LDDINC := $(shell pwd)
 INC_CLI := $(LDDINC)
 INC_PUB  := $(LDDINC)/../include
 INC_COM  := $(LDDINC)/../amp/include
-EXTRA_CFLAGS	+= -I$(INC_CLI) -I$(INC_PUB) -I$(INC_COM) 
+EXTRA_CFLAGS	+= -I$(INC_CLI) -I$(INC_PUB) -I$(INC_COM)
 EXTRA_CFLAGS	+= -g -Wall 
 EXTRA_CFLAGS	+= -D_GNU_SOURCE
 #EXTRA_CFLAGS    += -D__DEDUP_DEBUG__
@@ -21,7 +21,7 @@ RM = rm -f
 AR = ar rvs
 MV = mv -f
 
-EXE_FILES = deduper
+EXE_FILES = compressor
 
 OBJS =	compressor.o	\
 		compressor_op.o\
@@ -31,7 +31,16 @@ OBJS =	compressor.o	\
 		compressor_con.o\
 		compressor_index.o\
 		bloom.o\
-		hash.o
+		hash.o\
+		dc_c_global.o\
+		dc_c_alignment.o\
+		dc_c_thread.o\
+		dc_c_encode.o\
+		dc_c_io.o\
+		dc_d_global.o\
+		dc_d_io.o\
+		dc_d_decode.o\
+		dc_d_decompress.o
 
 
 #LIB = libcom.a

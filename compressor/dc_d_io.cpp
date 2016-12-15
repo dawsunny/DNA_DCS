@@ -14,16 +14,16 @@
 #include <string>
 using namespace std;
 
-dc_s32_t   ref_seq_total_no_g;
-dc_s8_t	 **ref_seqs_g;
-dc_s32_t  *ref_seqs_len_g;
+dc_s32_t   dc_d_ref_seq_total_no_g;
+dc_s8_t	 **dc_d_ref_seqs_g;
+dc_s32_t  *dc_d_ref_seqs_len_g;
 
-int DIF_RATE;
-int OVERLAP;
+int dc_d_DIF_RATE;
+int dc_d_OVERLAP;
 int LINE_LEN;
 
 void
-print_usage()
+dc_d_print_usage()
 {
     printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printf("Usage:\n");
@@ -43,32 +43,32 @@ print_usage()
 
 //check whether the path exsits
 dc_s32_t 
-check_arg( dc_s32_t argc, dc_s8_t *argv[] )
+dc_d_check_arg( dc_s32_t argc, dc_s8_t *argv[] )
 {
     dc_s32_t rc = 0;
-    DC_PRINT("check_arg enter:\n");
+    DC_PRINT("dc_d_check_arg enter:\n");
 
-    DIF_RATE = 0.01;
+    dc_d_DIF_RATE = 0.01;
     LINE_LEN = 60;
 
     if( argc != 3 && argc != 5 && argc != 7) 
     {   
-        DC_ERROR("ERROR!: check_arg: input arg error\n");
-        print_usage();
+        DC_ERROR("ERROR!: dc_d_check_arg: input arg error\n");
+        dc_d_print_usage();
         rc = -1; 
         goto EXIT;
     }   
 
     if( access(argv[argc - 2], 0) != 0 ) 
     {   
-        DC_ERROR("ERROR!: check_arg: ref file not exsits\n");
+        DC_ERROR("ERROR!: dc_d_check_arg: ref file not exsits\n");
         rc = -1; 
         goto EXIT;
     }   
 
     if( access(argv[argc - 1], 0) != 0 ) 
     {   
-        DC_ERROR("ERROR!: check_arg: compressed file/dir not exsits\n");
+        DC_ERROR("ERROR!: dc_d_check_arg: compressed file/dir not exsits\n");
         rc = -1; 
         goto EXIT;
     }   
@@ -79,12 +79,12 @@ check_arg( dc_s32_t argc, dc_s8_t *argv[] )
         switch(opt)
         {
             case '?':
-                DC_ERROR("ERROR!: check_arg: unrecognized option: -%c", optopt);
-                print_usage();
+                DC_ERROR("ERROR!: dc_d_check_arg: unrecognized option: -%c", optopt);
+                dc_d_print_usage();
                 rc = -1;
                 goto EXIT;
             case 'm':
-                DIF_RATE = atof(optarg);
+                dc_d_DIF_RATE = atof(optarg);
                 break;
             case 'l':
                 LINE_LEN = atoi(optarg);
@@ -92,20 +92,20 @@ check_arg( dc_s32_t argc, dc_s8_t *argv[] )
         }
     }
 
-    OVERLAP = REF_CHUNK + (int)(INPUT_CHUNK * DIF_RATE);
+    dc_d_OVERLAP = REF_CHUNK + (int)(INPUT_CHUNK * dc_d_DIF_RATE);
 
 EXIT:
-    DC_PRINT("check_arg leave\n");
+    DC_PRINT("dc_d_check_arg leave\n");
     return rc; 
 }
 
 
 //read reference file, allocate and fill the reference buf
 dc_s32_t 
-read_ref_file(dc_s8_t *ref_file_path)
+dc_d_read_ref_file(dc_s8_t *ref_file_path)
 {
 	dc_s32_t  rc = 0;
-	DC_PRINT("read_ref_file enter:\n");
+	DC_PRINT("dc_d_read_ref_file enter:\n");
 
 	dc_s32_t i, j, tmp_len, ref_seq_no = 0;
 	dc_s8_t  line_buf[LINE_BUF_LEN];
@@ -117,43 +117,43 @@ read_ref_file(dc_s8_t *ref_file_path)
 	FILE *fin_ref = fopen(ref_file_path, "r");
 	if( fin_ref == NULL ) 
     {
-		DC_PRINT("error: read_ref_file: open file error\n");
+		DC_PRINT("error: dc_d_read_ref_file: open file error\n");
 		rc = -1;
 		goto EXIT;
 	}
 
     //global varibles assignment
-	ref_seq_total_no_g = (file_stat.st_size + REF_CHUNK - 1) / REF_CHUNK;
+	dc_d_ref_seq_total_no_g = (file_stat.st_size + REF_CHUNK - 1) / REF_CHUNK;
 
-	ref_seqs_g = (dc_s8_t **) malloc( sizeof(dc_s8_t *) * ref_seq_total_no_g );
-	if( ref_seqs_g == NULL )
+	dc_d_ref_seqs_g = (dc_s8_t **) malloc( sizeof(dc_s8_t *) * dc_d_ref_seq_total_no_g );
+	if( dc_d_ref_seqs_g == NULL )
 	{
-		DC_ERROR("ERROR!: read_ref_file: malloc for ref_seqs_g error\n");
+		DC_ERROR("ERROR!: dc_d_read_ref_file: malloc for dc_d_ref_seqs_g error\n");
 		rc = -1;
 		goto EXIT;
 	}
-	ref_seqs_len_g = (dc_s32_t *) malloc(ref_seq_total_no_g * sizeof(dc_s32_t));
-	if( ref_seqs_len_g == NULL )
+	dc_d_ref_seqs_len_g = (dc_s32_t *) malloc(dc_d_ref_seq_total_no_g * sizeof(dc_s32_t));
+	if( dc_d_ref_seqs_len_g == NULL )
 	{
-		DC_ERROR("ERROR!: read_ref_file: malloc for ref_seqs_len_g error\n");
+		DC_ERROR("ERROR!: dc_d_read_ref_file: malloc for dc_d_ref_seqs_len_g error\n");
 		rc = -1;
 		goto EXIT;
 	}
 
 	//initialize
-	for(i = 0; i < ref_seq_total_no_g; ++i) 
+	for(i = 0; i < dc_d_ref_seq_total_no_g; ++i) 
     {
-		ref_seqs_g[i] = NULL;
-		ref_seqs_len_g[i]  = 0;
+		dc_d_ref_seqs_g[i] = NULL;
+		dc_d_ref_seqs_len_g[i]  = 0;
 	}
 
 	//allocate            
-	for(i = 0; i < ref_seq_total_no_g; ++i) 
+	for(i = 0; i < dc_d_ref_seq_total_no_g; ++i) 
     {
-		ref_seqs_g[i] = (dc_s8_t *) malloc( sizeof(dc_s8_t) * (REF_CHUNK + OVERLAP) );
-		if( ref_seqs_g[i] == NULL ) 
+		dc_d_ref_seqs_g[i] = (dc_s8_t *) malloc( sizeof(dc_s8_t) * (REF_CHUNK + dc_d_OVERLAP) );
+		if( dc_d_ref_seqs_g[i] == NULL ) 
         {
-			DC_ERROR("ERROR!: read_ref_file: seq %d: malloc error\n", i);
+			DC_ERROR("ERROR!: dc_d_read_ref_file: seq %d: malloc error\n", i);
 			rc = -1;
 			goto EXIT;
 		}
@@ -184,43 +184,43 @@ read_ref_file(dc_s8_t *ref_file_path)
         if(tmp_len == 0)
             continue;
 
-		strncpy(ref_seqs_g[ref_seq_no] + ref_seqs_len_g[ref_seq_no], line_buf, tmp_len);
-		ref_seqs_len_g[ref_seq_no] += tmp_len;
+		strncpy(dc_d_ref_seqs_g[ref_seq_no] + dc_d_ref_seqs_len_g[ref_seq_no], line_buf, tmp_len);
+		dc_d_ref_seqs_len_g[ref_seq_no] += tmp_len;
 
-		if( ref_seqs_len_g[ref_seq_no] > REF_CHUNK )  //each fragment has REF_CHUNK elements
+		if( dc_d_ref_seqs_len_g[ref_seq_no] > REF_CHUNK )  //each fragment has REF_CHUNK elements
         {
-			tmp_len = ref_seqs_len_g[ref_seq_no] - REF_CHUNK;
-			strncpy(ref_seqs_g[ref_seq_no + 1], ref_seqs_g[ref_seq_no] + REF_CHUNK, tmp_len);
-			ref_seqs_len_g[ref_seq_no]      = REF_CHUNK;
-			ref_seqs_len_g[ref_seq_no + 1] += tmp_len;
+			tmp_len = dc_d_ref_seqs_len_g[ref_seq_no] - REF_CHUNK;
+			strncpy(dc_d_ref_seqs_g[ref_seq_no + 1], dc_d_ref_seqs_g[ref_seq_no] + REF_CHUNK, tmp_len);
+			dc_d_ref_seqs_len_g[ref_seq_no]      = REF_CHUNK;
+			dc_d_ref_seqs_len_g[ref_seq_no + 1] += tmp_len;
 
 			++ref_seq_no;
 		}
 	}
 	fclose(fin_ref);
 
-    for(i = ref_seq_no + 1; i < ref_seq_total_no_g; ++i)
+    for(i = ref_seq_no + 1; i < dc_d_ref_seq_total_no_g; ++i)
     {
-        if(ref_seqs_g[i] != NULL)
+        if(dc_d_ref_seqs_g[i] != NULL)
         {
-            free(ref_seqs_g[i]);
-            ref_seqs_g[i] = NULL;
+            free(dc_d_ref_seqs_g[i]);
+            dc_d_ref_seqs_g[i] = NULL;
         }
     }
 
-    ref_seq_total_no_g = ref_seq_no + 1;
+    dc_d_ref_seq_total_no_g = ref_seq_no + 1;
 
     //fill the overlap
-    for(i = 0; i <= ref_seq_total_no_g - 3; ++i) 
+    for(i = 0; i <= dc_d_ref_seq_total_no_g - 3; ++i) 
     {
-        strncpy(ref_seqs_g[i] + REF_CHUNK, ref_seqs_g[i + 1], OVERLAP);
-        ref_seqs_len_g[i] += OVERLAP;
+        strncpy(dc_d_ref_seqs_g[i] + REF_CHUNK, dc_d_ref_seqs_g[i + 1], dc_d_OVERLAP);
+        dc_d_ref_seqs_len_g[i] += dc_d_OVERLAP;
     }
-    strncpy(ref_seqs_g[i] + ref_seqs_len_g[i], ref_seqs_g[i + 1], MIN(OVERLAP, ref_seqs_len_g[i + 1]));  //i = refFragTotNo - 2
-    ref_seqs_len_g[i] += MIN(OVERLAP, ref_seqs_len_g[i + 1]);
+    strncpy(dc_d_ref_seqs_g[i] + dc_d_ref_seqs_len_g[i], dc_d_ref_seqs_g[i + 1], MIN(dc_d_OVERLAP, dc_d_ref_seqs_len_g[i + 1]));  //i = refFragTotNo - 2
+    dc_d_ref_seqs_len_g[i] += MIN(dc_d_OVERLAP, dc_d_ref_seqs_len_g[i + 1]);
 
 EXIT:
-	DC_PRINT("read_ref_file leave\n");
+	DC_PRINT("dc_d_read_ref_file leave\n");
 	return rc;
 }
 
@@ -267,33 +267,33 @@ write_to_file(vector<string> &inp_seqs, FILE *fout)
 }
 
 void
-free_memory()
+dc_d_free_memory()
 {
-	DC_PRINT("free_memory enter:\n");
+	DC_PRINT("dc_d_free_memory enter:\n");
 
 	dc_s32_t i;
 
-	if(ref_seqs_g != NULL)
+	if(dc_d_ref_seqs_g != NULL)
 	{
-        for(i = 0; i < ref_seq_total_no_g; ++i)
+        for(i = 0; i < dc_d_ref_seq_total_no_g; ++i)
         {
-            if(ref_seqs_g[i] != NULL)
+            if(dc_d_ref_seqs_g[i] != NULL)
             {
-                free(ref_seqs_g[i]);
-                ref_seqs_g[i] = NULL;
+                free(dc_d_ref_seqs_g[i]);
+                dc_d_ref_seqs_g[i] = NULL;
             }
         }
 
-		free(ref_seqs_g);
-		ref_seqs_g = NULL;
+		free(dc_d_ref_seqs_g);
+		dc_d_ref_seqs_g = NULL;
 	}
 
-	if(ref_seqs_len_g != NULL)
+	if(dc_d_ref_seqs_len_g != NULL)
 	{
-		free(ref_seqs_len_g);
-		ref_seqs_len_g = NULL;
+		free(dc_d_ref_seqs_len_g);
+		dc_d_ref_seqs_len_g = NULL;
 	}
 
-	DC_PRINT("free_memory leave\n");
+	DC_PRINT("dc_d_free_memory leave\n");
 }
 

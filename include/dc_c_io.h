@@ -22,19 +22,19 @@ struct dc_link
 typedef struct dc_link dc_link_t;
 
 void
-print_usage();
+dc_c_print_usage();
 
 extern dc_s32_t
-check_arg( dc_s32_t argc, dc_s8_t *argv[] );
+dc_c_check_arg( dc_s32_t argc, dc_s8_t *argv[] );
 
 extern dc_s32_t
-read_ref_file( dc_s8_t *ref_file_path );
+dc_c_read_ref_file( dc_s8_t *ref_file_path );
 
 extern dc_s32_t
 save_seed_loc();
 
 extern void
-free_memory();
+dc_c_free_memory();
 
 extern void
 write_link( dc_s32_t ref_seq_no, dc_s32_t ref_start, dc_s32_t ref_len, 

@@ -35,6 +35,8 @@
 #include <string.h>
 #include <semaphore.h>
 
+#include <dc_c_global.h>
+
 /*analyze the msg find the request type*/
 dcs_s32_t __dcs_compressor_process_req(amp_request_t *req, dcs_thread_t *threadp)
 {
@@ -547,6 +549,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     memset(datap, 0, datasize + 1);     //by bxz
     memcpy(datap, tmpdatap, datasize);
 
+    dc_c_main(0, NULL);
     //DCS_MSG("6\n");
     /*get sample FPs*/
     /*

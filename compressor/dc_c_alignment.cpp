@@ -18,8 +18,8 @@
 
 //defined in dc_io.c
 //ref seqs and seeds
-extern dc_s8_t	    **ref_seqs_g;
-extern dc_s32_t      *ref_seqs_len_g;
+extern dc_s8_t	    **dc_c_ref_seqs_g;
+extern dc_s32_t      *dc_c_ref_seqs_len_g;
 
 extern dc_seed_loc_t *seed_locs_g[];
 extern dc_s32_t       seed_locs_freq_g[];
@@ -539,8 +539,8 @@ find_match(dc_s32_t inp_seq_no, dc_s8_t *inp_seq, dc_s32_t inp_seq_len, dc_s32_t
         for(j = 0; j < seed_freq_tmp; ++j) 
         {
             ref_seq_no  = seed_locs_g[seed_i][j].ref_seq_no;
-            ref_seq	    = ref_seqs_g[ ref_seq_no ];
-            ref_seq_len = ref_seqs_len_g[ ref_seq_no ];
+            ref_seq	    = dc_c_ref_seqs_g[ ref_seq_no ];
+            ref_seq_len = dc_c_ref_seqs_len_g[ ref_seq_no ];
 
             ref_stop   = seed_locs_g[seed_i][j].seed_stop;
             ref_start  = ref_stop - SEED_LEN + 1;

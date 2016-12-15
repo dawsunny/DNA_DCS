@@ -26,7 +26,7 @@
 using namespace std;
 
 //variables defined in dc_io.c
-extern dc_s8_t **ref_seqs_g;
+extern dc_s8_t **dc_d_ref_seqs_g;
 
 
 //make orignal sequence according to the reference sequences and difference strings
@@ -186,7 +186,7 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
                 goto EXIT;
             }
 
-            strncpy((dc_s8_t *)inp_seq.c_str(), ref_seqs_g[link_info.ref_seq_no] + link_info.ref_start, inp_seq_len);
+            strncpy((dc_s8_t *)inp_seq.c_str(), dc_d_ref_seqs_g[link_info.ref_seq_no] + link_info.ref_start, inp_seq_len);
         }
 		else if( ref_seq_len != -1 )     //unexact match
 		{
@@ -200,7 +200,7 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
 				--dstr_len;
 			}
 
-			make_orig_seq(ref_seqs_g[link_info.ref_seq_no] + link_info.ref_start, ref_seq_len, dstr, dstr_len, (dc_s8_t *)inp_seq.c_str(), inp_seq_len);
+			make_orig_seq(dc_d_ref_seqs_g[link_info.ref_seq_no] + link_info.ref_start, ref_seq_len, dstr, dstr_len, (dc_s8_t *)inp_seq.c_str(), inp_seq_len);
 		}
 		else//by weizheng, for what 
 		{
