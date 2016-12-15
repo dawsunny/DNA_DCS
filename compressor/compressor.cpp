@@ -34,9 +34,16 @@
 #include <string.h>
 #include <semaphore.h>
 
+#include "dc_c_global.h"
+#include "dc_c_io.h"
+
+
 dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
 {
     dcs_s32_t rc = 0;
+    
+    struct timeval start_time, end_time;
+    struct timeval glo_start_time, glo_end_time;
 
     DCS_ENTER("compressor enter \n");
 
@@ -91,6 +98,29 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
         DCS_ERROR("main __dcs_compressor_index_init");
         goto EXIT;
     }
+    
+    
+    printf("Read ref begin, please wait...\n");
+    fflush(stdout);
+    gettimeofday( &start_time, NULL );
+    rc = dc_c_read_ref_file( FASTA_REF_PATH );   //read sequences to string array
+    if( rc )
+    {
+        DCS_ERROR("error: dc_c_read_ref_file return error\n");
+        goto EXIT;
+    }
+    gettimeofday( &end_time, NULL );
+    print_time("dc_c_read_ref_file", start_time, end_time);
+    
+    gettimeofday( &start_time, NULL );
+    rc = save_seed_loc();    //save 10-mer locations to struct array
+    if( rc )
+    {
+        DCS_ERROR("error: save_seed_loc return error\n");
+        goto EXIT;
+    }
+    gettimeofday( &end_time, NULL );
+    print_time("save_seed_loc", start_time, end_time);
 
     rc = __dcs_create_compressor_thread();
     if(rc != 0){
@@ -104,5 +134,6 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
 
 EXIT:
     DCS_LEAVE("main leave \n");
+    dc_c_free_memory();
     return rc;
 }

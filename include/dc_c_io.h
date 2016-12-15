@@ -25,7 +25,7 @@ void
 dc_c_print_usage();
 
 extern dc_s32_t
-dc_c_check_arg( dc_s32_t argc, dc_s8_t *argv[] );
+dc_c_check_arg();
 
 extern dc_s32_t
 dc_c_read_ref_file( dc_s8_t *ref_file_path );

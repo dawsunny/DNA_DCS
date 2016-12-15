@@ -502,6 +502,8 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     amp_message_t *repmsgp = NULL;
     dcs_msg_t   *msgp = NULL;
 
+    FILE *filep = NULL; //bxz
+
     DCS_ENTER("__dcs_compressor_write enter \n");
 
     /*get msg from the req*/
@@ -548,8 +550,11 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     }
     memset(datap, 0, datasize + 1);     //by bxz
     memcpy(datap, tmpdatap, datasize);
-
-    dc_c_main(0, NULL);
+    
+    filep = fopen("./input.fa", "w+");
+    fwrite(datap, 1, datasize, filep);
+    fclose(filep);
+    dc_c_main(datap, datasize, "./input.fa");
     //DCS_MSG("6\n");
     /*get sample FPs*/
     /*

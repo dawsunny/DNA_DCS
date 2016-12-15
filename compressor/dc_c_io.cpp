@@ -22,10 +22,10 @@ dc_s32_t       seed_locs_freq_g[MEGA];
 dc_s32_t   dc_c_ref_seq_total_no_g;
 dc_s32_t   max_seed_freq_g;
 
-int dc_c_DIF_RATE;
+int dc_c_DIF_RATE = 0.01;
 int dc_c_OVERLAP;
 int MAX_DP_LEN;
-int THREAD_NUM;
+int THREAD_NUM = 1;
 
 void
 dc_c_print_usage()
@@ -47,8 +47,9 @@ dc_c_print_usage()
 }
 
 dc_s32_t 
-dc_c_check_arg( dc_s32_t argc, dc_s8_t *argv[] )
+dc_c_check_arg()
 {
+    /* //bxz
     dc_s32_t rc = 0;
     DC_PRINT("dc_c_check_arg enter:\n");
 
@@ -95,14 +96,15 @@ dc_c_check_arg( dc_s32_t argc, dc_s8_t *argv[] )
                 break;
         }
     }
+     */
 
     dc_c_OVERLAP = INPUT_CHUNK + (int)(INPUT_CHUNK * dc_c_DIF_RATE);
     MAX_DP_LEN = 12 + (int)(30 * dc_c_DIF_RATE);
     MAX_DP_LEN = MIN(MAX_DP_LEN, 25);
 
 EXIT:
-    DC_PRINT("dc_c_check_arg leave\n");
-    return rc; 
+    //DC_PRINT("dc_c_check_arg leave\n");
+    return 0;
 }
 
 //read reference file, allocate a string array, and fill it 

@@ -9,6 +9,7 @@ mkdir -p ${dir}/server/mapfile2
 mkdir -p ${dir}/compressor/fp
 mkdir -p ${dir}/compressor/data
 mkdir -p ${dir}/compressor/hash_index
+mkdir -p ${dir}/compressor/fa_ref
 mkdir -p ${dir}/log
 
 #configure file

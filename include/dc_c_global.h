@@ -15,5 +15,6 @@ extern int MAX_DP_LEN; //10+(int)(50*dc_c_DIF_RATE) [10,25]
 //thread number
 extern int THREAD_NUM;
 
-dc_s32_t dc_c_main( dc_s32_t argc, dc_s8_t *argv[] );
+void print_time(char *explain, struct timeval start_time, struct timeval end_time);
+dc_s32_t dc_c_main(dc_s8_t *, dc_u32_t, dc_s8_t *);
 #endif

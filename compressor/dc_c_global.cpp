@@ -13,6 +13,7 @@
 #include "dc_c_thread.h"
 
 #include <dc_c_global.h>
+#include <dcs_const.h>
 
 void
 print_time(char *explain, struct timeval start_time, struct timeval end_time)
@@ -27,7 +28,7 @@ print_time(char *explain, struct timeval start_time, struct timeval end_time)
 }
 
 dc_s32_t
-dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
+dc_c_main(dc_s8_t *data,  dc_u32_t datasize, dc_s8_t *input )
 {
 	dc_s32_t rc = 0;
     struct timeval start_time, end_time;
@@ -38,15 +39,15 @@ dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
 
     gettimeofday( &glo_start_time, NULL );
 
-	rc = dc_c_check_arg( argc, argv );   //check whether file/dir exist
+	rc = dc_c_check_arg();   //check whether file/dir exist
 	if( rc )
 	{
 		DC_ERROR("error: dc_c_check_arg return error\n");
 		goto EXIT;
 	}
-
+/*
     gettimeofday( &start_time, NULL );
-	rc = dc_c_read_ref_file( argv[argc - 2] );   //read sequences to string array
+	rc = dc_c_read_ref_file( FASTA_REF_PATH );   //read sequences to string array
 	if( rc )
 	{
 		DC_ERROR("error: dc_c_read_ref_file return error\n");
@@ -64,7 +65,7 @@ dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
 	}
     gettimeofday( &end_time, NULL );
     print_time("save_seed_loc", start_time, end_time);
-
+*/
 	rc = thread_pool_init();   //create threads and wait for task
 	if( rc )
 	{
@@ -72,7 +73,7 @@ dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
 		goto EXIT;
 	}
 
-	rc = pool_add_task(argv[argc - 1]);   //add tasks to task list
+	rc = pool_add_task(input);   //add tasks to task list
 	if( rc )
 	{
 		DC_ERROR("error: pool_add_task return error\n");
@@ -81,12 +82,12 @@ dc_c_main( dc_s32_t argc, dc_s8_t *argv[] )
 
 EXIT:
 	thread_pool_destroy();  //destroy threads
-	dc_c_free_memory();      //free the allocated memory
+	//dc_c_free_memory();      //free the allocated memory
 
 //    tar_compressed_files();  //tar -cjf /tmp/dna_compress/out/...
 
     gettimeofday( &glo_end_time, NULL );
-    print_time("main", glo_start_time, glo_end_time);
+    //print_time("main", glo_start_time, glo_end_time);
 
     printf("Compression end.\n");
     fflush(stdout);

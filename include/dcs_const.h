@@ -116,6 +116,9 @@ enum dcs_comp_type{
 #define MASTER_ADDR_CONF	DCS_CONF"/master_addr"
 #define COMPRESSOR_ADDR_CONF	DCS_CONF"/compressor_addr"
 
+//bxz
+#define FASTA_REF_PATH  CONF_DIR"/compressor/fa_ref/ref.fasta"
+
 #ifndef DCS_LOG_FILE_PATH
 #define DCS_LOG_FILE_PATH 	CONF_DIR"/log/"
 #endif
