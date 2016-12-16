@@ -617,8 +617,12 @@ EXIT:
 
 //compress the input file
 dc_s32_t 
-compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
+compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name)
 {
+    //bxz
+    if (datasize == 0) {
+        return -1;
+    }
     dc_s32_t rc = 0;
     DC_PRINT("compress_input_file [%s] enter:\n", input_path);
 
@@ -666,7 +670,7 @@ compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
 
     //just as args
     dc_s8_t *aligned_prev[2] = {NULL, NULL}, *aligned_next[2] = {NULL, NULL}, *aligned_seqs[2] = {NULL, NULL};
-    dc_s32_t i, j;
+    dc_s32_t i, j, k, h;
     dc_u16_t head_line_len = 0;
 
     //malloc 
@@ -694,12 +698,14 @@ compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
     }
 
     //open
-    if( (fin_inp = fopen(input_path, "r")) == NULL ) 
+    /*
+    if( (fin_inp = fopen(data, "r")) == NULL ) 
     {
-        DC_ERROR("ERROR!: compress_input_file: file %s open error\n", input_path);
+        DC_ERROR("ERROR!: compress_input_file: file %s open error\n", data);
         rc = -1;
         goto EXIT;
     }
+     */
 
     if( (fout = fopen(output_name, "wb")) == NULL ) 
     {
@@ -718,11 +724,115 @@ compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
     input_seq_no  = 0;  //fragment number: 0, 1, 2, ...
     input_seq_len = 0;
 
+    //bxz
+    if (data[0] == '>') {
+        head_line_len = 0;
+        memset(line_buf, 0, LINE_BUF_LEN);
+        for (k = 0; k < datasize && data[k] != '\n'; ++k) {
+            line_buf[k] = data[k];
+            head_line_len++;
+        }
+        if (data[k] == '\n') {
+            //line_buf[k] = data[k];
+            ++k;
+        }
+        fwrite(&head_line_len, sizeof(dc_u16_t), 1, fout);
+        fwrite(line_buf, sizeof(dc_s8_t), head_line_len, fout);
+        goto EXIT;
+    }
+    /*
     fgets(line_buf, LINE_BUF_LEN, fin_inp);   //head line
     head_line_len = strlen(line_buf) - 1;
     fwrite(&head_line_len, sizeof(dc_u16_t), 1, fout);
     fwrite(line_buf, sizeof(dc_s8_t), head_line_len, fout);
+    */
+    while( k < datasize ){
+        h = k;
+        memset(line_buf, 0, LINE_BUF_LEN);
+        for (; k < datasize && data[k] != '\n'; ++k) {
+            ;
+        }
+        k++;
+        memcpy(line_buf, data + h, k - h);  //copy an extra return
+        //if (k < datasize) {
+        //    memcpy(line_buf, data + h, k + 1 - h);  //copy an extra return
+        //} else {
+        //    memcpy(line_buf, data + h, k - h);
+        //}
+        
+        for(j = 0; j < k - h && line_buf[j] != '\n' && line_buf[j] != 'N'; ++j, ++nLoc)
+            ;
+        if(j > 0 && nCnt > 0)//tag by weizheng
+        {
+            nLoc -= j;
+            fwrite(&nLoc, sizeof(dc_u32_t), 1, fout_n);
+            fwrite(&nCnt, sizeof(dc_u32_t), 1, fout_n);
+            nLoc += j;
+            nCnt = 0;
+        }
+        if(line_buf[j] == 'N')
+        {
+            i = j++;
+            ++nCnt;
+            
+            while(line_buf[j] != '\n')
+            {
+                if(line_buf[j] == 'N')
+                    ++nCnt;
+                else
+                {
+                    if(nCnt > 0)
+                    {
+                        fwrite(&nLoc, sizeof(dc_u32_t), 1, fout_n);
+                        fwrite(&nCnt, sizeof(dc_u32_t), 1, fout_n);
+                        nCnt = 0;
+                    }
+                    ++nLoc;
+                    line_buf[i++] = line_buf[j];
+                }
+                ++j;
+            }
+            
+            line_buf_len = i;
+        }
+        else
+        {
+            if(nCnt > 0)
+            {
+                nLoc -= j;
+                fwrite(&nLoc, sizeof(dc_u32_t), 1, fout_n);
+                fwrite(&nCnt, sizeof(dc_u32_t), 1, fout_n);
+                nLoc += j;
+                nCnt = 0;
+            }
+            line_buf_len = j;
+        }
+        
+        if(line_buf_len == 0)
+            continue;
+        
+        strncpy(input_seq + input_seq_len, line_buf, line_buf_len);
+        input_seq_len += line_buf_len;
+        
+        if( input_seq_len >= INPUT_CHUNK )
+        {
+            tmp_buf_len = input_seq_len - INPUT_CHUNK;  //copy the more bases into the tmp_buf
+            strncpy(tmp_buf, input_seq + INPUT_CHUNK, tmp_buf_len);
+            input_seq_len = INPUT_CHUNK;
+            
+            printf("||||input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
+            //align
+            find_match(input_seq_no, input_seq, input_seq_len, &ref_start_g,
+                       aligned_prev, aligned_next, aligned_seqs, dstr, dstr_encode, fout);
+            
+            ++input_seq_no;
+            
+            strncpy(input_seq, tmp_buf, tmp_buf_len);  //copy back
+            input_seq_len = tmp_buf_len;
+        }
+    }
     
+    /*
     while( fgets(line_buf, LINE_BUF_LEN, fin_inp) != NULL ) 
     {
         for(j = 0; line_buf[j] != '\n' && line_buf[j] != 'N'; ++j, ++nLoc)
@@ -795,6 +905,7 @@ compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
             input_seq_len = tmp_buf_len;
         }
     }
+     */
     if(nCnt > 0)
     {
         fwrite(&nLoc, sizeof(dc_u32_t), 1, fout_n);
@@ -802,6 +913,7 @@ compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name)
     }
     if( input_seq_len > 0 )
 	{
+        printf("~~~~input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
         //align
         find_match(input_seq_no, input_seq, input_seq_len, &ref_start_g,
                    aligned_prev, aligned_next, aligned_seqs, dstr, dstr_encode, fout);

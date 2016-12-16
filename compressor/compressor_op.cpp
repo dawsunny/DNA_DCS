@@ -503,6 +503,8 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     dcs_msg_t   *msgp = NULL;
 
     FILE *filep = NULL; //bxz
+    static int seqno = 0;
+    char *output_name;
 
     DCS_ENTER("__dcs_compressor_write enter \n");
 
@@ -551,10 +553,16 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     memset(datap, 0, datasize + 1);     //by bxz
     memcpy(datap, tmpdatap, datasize);
     
-    filep = fopen("./input.fa", "w+");
-    fwrite(datap, 1, datasize, filep);
-    fclose(filep);
-    dc_c_main(datap, datasize, "./input.fa");
+    //filep = fopen("./input.fa", "w+");
+    //fwrite(datap, 1, datasize, filep);
+    //fclose(filep);
+    output_name = (char *)malloc(100);
+    sprintf(output_name, "./output.fa_%d", seqno++);
+    if (filetype == DCS_FILETYPE_FASTA) {
+        dc_c_main(datap, datasize, output_name);
+    } else {
+        
+    }
     //DCS_MSG("6\n");
     /*get sample FPs*/
     /*
@@ -674,6 +682,12 @@ EXIT:
     if(req != NULL){
         __amp_free_request(req);
         req = NULL;
+    }
+    
+    //bxz
+    if (output_name) {
+        free(output_name);
+        output_name = NULL;
     }
 
     DCS_LEAVE("__dcs_compressor_write leave \n");

@@ -494,6 +494,8 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
 
     struct stat f_state;
     struct stat fm_state;
+    
+    FILE *filep = NULL;
 
     DCS_ENTER("__dcs_clt_write_file enter \n");
 
@@ -570,6 +572,10 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         goto EXIT;
     }
     
+    //bxz
+    close(write_fd);
+    filep = fopen(filename, "r");
+    
     if (clt_filetype == DCS_FILETYPE_FASTA) {
         buf = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
         if(buf == NULL){
@@ -579,7 +585,23 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         }
         memset(buf, 0, FA_CHUNK_SIZE);
         
-        while((rc = read(write_fd, buf, FA_CHUNK_SIZE)) != 0){
+        //bxz
+        fgets(buf, FA_CHUNK_SIZE, filep);    //read the first line(ID part)
+        c2s_datainfo.size = strlen(buf);
+        c2s_datainfo.offset = fileoffset;
+        c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+        c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
+        c2s_datainfo.finish = 0;
+        fileoffset = fileoffset + strlen(buf);
+        rc = clt_send_data(c2s_datainfo, buf, threadp);
+        if(rc != 0){
+            DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
+            goto EXIT;
+        }
+        memset(buf, 0, FA_CHUNK_SIZE);
+        
+        //while((rc = read(write_fd, buf, FA_CHUNK_SIZE)) != 0){
+        while((rc = fread(buf, 1, FA_CHUNK_SIZE, filep)) != 0){
             c2s_datainfo.size = rc;
             c2s_datainfo.offset = fileoffset;
             c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
@@ -689,6 +711,12 @@ EXIT:
     if(buf != NULL){
         free(buf);
         buf = NULL;
+    }
+    
+    //bxz
+    if (filep) {
+        fclose(filep);
+        filep = NULL;
     }
 
     DCS_LEAVE("__dcs_clt_write_file leave \n");

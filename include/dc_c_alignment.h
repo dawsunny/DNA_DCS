@@ -26,7 +26,7 @@ find_match(dc_s32_t inp_seq_no, dc_s8_t *inp_seq, dc_s32_t inp_seq_len, dc_s32_t
            dc_s8_t *aligned_prev[], dc_s8_t *aligned_next[], dc_s8_t *aligned_seqs[], 
            dc_s8_t *dstr, dc_u8_t *dstr_encode, FILE *fout);
 
-extern dc_s32_t
-compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name);
+//extern dc_s32_t compress_input_file(dc_s8_t *input_path, dc_s8_t *output_name);
+extern dc_s32_t compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name);
 
 #endif

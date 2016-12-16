@@ -1,9 +1,10 @@
 #ifndef __DC_CONST_H_
 #define __DC_CONST_H_
+#include "dcs_const.h"
 
 //read reference sequences
 #define REF_CHUNK 1000000
-#define INPUT_CHUNK 10000
+#define INPUT_CHUNK FA_CHUNK_SIZE//10000
 //float DIF_RATE;  //compress
 //int OVERLAP;  //(REF_CHUNK + (int)(REF_CHUNK * DIF_RATE))
 

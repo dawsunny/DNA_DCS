@@ -89,7 +89,7 @@ thread_routine(void *unused_arg)
         gettimeofday(&start_time, NULL);
 
         //work on the task
-        compress_input_file(head_task->input_path, head_task->output_name);
+        //compress_input_file(head_task->input_path, head_task->output_name);
 
         gettimeofday(&end_time, NULL);
         taken_time = end_time.tv_sec - start_time.tv_sec + 1e-6 * (end_time.tv_usec - start_time.tv_usec);

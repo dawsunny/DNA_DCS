@@ -14,6 +14,7 @@
 
 #include <dc_c_global.h>
 #include <dcs_const.h>
+#include "dc_c_alignment.h"
 
 void
 print_time(char *explain, struct timeval start_time, struct timeval end_time)
@@ -28,7 +29,7 @@ print_time(char *explain, struct timeval start_time, struct timeval end_time)
 }
 
 dc_s32_t
-dc_c_main(dc_s8_t *data,  dc_u32_t datasize, dc_s8_t *input )
+dc_c_main(dc_s8_t *data,  dc_u32_t datasize, dc_s8_t *output )
 {
 	dc_s32_t rc = 0;
     struct timeval start_time, end_time;
@@ -66,6 +67,7 @@ dc_c_main(dc_s8_t *data,  dc_u32_t datasize, dc_s8_t *input )
     gettimeofday( &end_time, NULL );
     print_time("save_seed_loc", start_time, end_time);
 */
+    /*
 	rc = thread_pool_init();   //create threads and wait for task
 	if( rc )
 	{
@@ -79,9 +81,11 @@ dc_c_main(dc_s8_t *data,  dc_u32_t datasize, dc_s8_t *input )
 		DC_ERROR("error: pool_add_task return error\n");
 		goto EXIT;
 	}
+     */
+    compress_input_file(data, datasize, output);
 
 EXIT:
-	thread_pool_destroy();  //destroy threads
+	//thread_pool_destroy();  //destroy threads
 	//dc_c_free_memory();      //free the allocated memory
 
 //    tar_compressed_files();  //tar -cjf /tmp/dna_compress/out/...
