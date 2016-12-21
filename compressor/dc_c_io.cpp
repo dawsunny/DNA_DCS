@@ -98,7 +98,8 @@ dc_c_check_arg()
     }
      */
 
-    dc_c_OVERLAP = INPUT_CHUNK + (int)(INPUT_CHUNK * dc_c_DIF_RATE);
+    //dc_c_OVERLAP = INPUT_CHUNK + (int)(INPUT_CHUNK * dc_c_DIF_RATE);
+    dc_c_OVERLAP = REF_CHUNK + (int)(INPUT_CHUNK * dc_c_DIF_RATE);  //by bxz
     MAX_DP_LEN = 12 + (int)(30 * dc_c_DIF_RATE);
     MAX_DP_LEN = MIN(MAX_DP_LEN, 25);
 

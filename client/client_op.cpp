@@ -573,8 +573,8 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     }
     
     //bxz
-    close(write_fd);
-    filep = fopen(filename, "r");
+    //close(write_fd);
+    //filep = fopen(filename, "r");
     
     if (clt_filetype == DCS_FILETYPE_FASTA) {
         buf = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
@@ -585,6 +585,47 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         }
         memset(buf, 0, FA_CHUNK_SIZE);
         
+        while((rc = read(write_fd, buf, FA_CHUNK_SIZE)) != 0){
+            c2s_datainfo.size = rc;
+            c2s_datainfo.offset = fileoffset;
+            c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+            c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
+            c2s_datainfo.finish = 0;
+            fileoffset = fileoffset + rc;
+            rc = clt_send_data(c2s_datainfo, buf, threadp);
+            if(rc != 0){
+                DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
+                goto EXIT;
+            }
+            memset(buf, 0, FA_CHUNK_SIZE);
+        }
+        
+        if(fileoffset == filesize && filesize != 0){
+            DCS_MSG("__dcs_clt_write_file finish write file %s  to server \n",
+                    filename);
+            c2s_datainfo.finish = 1;
+            c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+            c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
+            c2s_datainfo.offset = filesize;
+            rc = __dcs_clt_finish_msg(c2s_datainfo, threadp);
+            if(rc != 0){
+                DCS_ERROR("send finish massage error: %d \n", rc);
+                goto EXIT;
+            }
+            DCS_MSG("__dcs_clt_write_file sem post finish_sem\n");
+            sem_post(&finish_sem);
+        } else if(fileoffset == filesize && filesize == 0){
+            rc = 0;
+            DCS_MSG("__dcs_clt_write_file sem post finish_sem\n");
+            sem_post(&finish_sem);
+            goto EXIT;
+        } else if(fileoffset != filesize){
+            DCS_ERROR("__dcs_clt_write_file fail to finish store file %s to server \n",
+                      filename);
+            rc = -1;
+            goto EXIT;
+        }
+        /*
         //bxz
         fgets(buf, FA_CHUNK_SIZE, filep);    //read the first line(ID part)
         c2s_datainfo.size = strlen(buf);
@@ -641,6 +682,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             rc = -1;
             goto EXIT;
         }
+         */
     } else if (clt_filetype == DCS_FILETYPE_FASTQ) {
         buf = (dcs_s8_t *)malloc(FQ_CHUNK_SIZE);
         if(buf == NULL){

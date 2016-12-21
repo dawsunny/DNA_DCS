@@ -724,6 +724,7 @@ compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name)
     input_seq_no  = 0;  //fragment number: 0, 1, 2, ...
     input_seq_len = 0;
 
+    
     //bxz
     if (data[0] == '>') {
         head_line_len = 0;
@@ -732,20 +733,22 @@ compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name)
             line_buf[k] = data[k];
             head_line_len++;
         }
-        if (data[k] == '\n') {
+        if (k < datasize) {
             //line_buf[k] = data[k];
             ++k;
         }
         fwrite(&head_line_len, sizeof(dc_u16_t), 1, fout);
         fwrite(line_buf, sizeof(dc_s8_t), head_line_len, fout);
-        goto EXIT;
+        //goto EXIT;
     }
+     
     /*
     fgets(line_buf, LINE_BUF_LEN, fin_inp);   //head line
     head_line_len = strlen(line_buf) - 1;
     fwrite(&head_line_len, sizeof(dc_u16_t), 1, fout);
     fwrite(line_buf, sizeof(dc_s8_t), head_line_len, fout);
     */
+
     while( k < datasize ){
         h = k;
         memset(line_buf, 0, LINE_BUF_LEN);
