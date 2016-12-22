@@ -15,6 +15,9 @@
 #include "ds_huffman.h"
 #include "ds_lz.h"
 
+#include "dcs_const.h"
+#include "dcs_type.h"
+
 #include <iostream>
 #include <time.h>
 using namespace std;
@@ -44,13 +47,15 @@ void usage()
 // ********************************************************************************************
 //
 // ********************************************************************************************
-int dsrc_main(int argc, _TCHAR* argv[])
+int dsrc_main(dcs_u32_t op_type, char *input_file_name, char *output_file_name)
 {
+    /*
 	if(argc < 4 || strcmp(argv[argc-1], argv[argc-2]) == 0)
 	{
 		usage();
 		return 0;
 	}
+     */
 	bool try_lz = false;
 	int32 max_lz_memory = 2048;
 	bool one_rec = false;
@@ -58,6 +63,7 @@ int dsrc_main(int argc, _TCHAR* argv[])
 
 	clock_t t1 = clock();
 
+    /*
 	for(int32 i = 2; i < argc-2; ++i)
 	{
 		if(strcmp(argv[i], "-l") == 0)
@@ -74,7 +80,9 @@ int dsrc_main(int argc, _TCHAR* argv[])
 		max_lz_memory = 128;
 	if(max_lz_memory > (1 << 16))
 		max_lz_memory = 1 << 16;
+     */
 
+    /*
 	if(!strcmp(argv[1], "e"))
 		compress(argv[argc-2], argv[argc-1], try_lz, max_lz_memory);
 	if(!strcmp(argv[1], "d"))
@@ -84,6 +92,14 @@ int dsrc_main(int argc, _TCHAR* argv[])
 		else
 			decompress(argv[argc-2], argv[argc-1]);
 	}
+     */
+    
+    //bxz
+    if (op_type == DCS_WRITE) {
+        compress(input_file_name, output_file_name, 0, 0);
+    } else if (op_type == DCS_READ) {
+        decompress(input_file_name, output_file_name);
+    }
 
 	cout << "Completed!\n";
 	cout << "Processing time: " << (double) (clock() - t1) / CLOCKS_PER_SEC << "s \n";

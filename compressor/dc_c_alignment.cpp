@@ -823,7 +823,7 @@ compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name)
             strncpy(tmp_buf, input_seq + INPUT_CHUNK, tmp_buf_len);
             input_seq_len = INPUT_CHUNK;
             
-            printf("||||input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
+            //printf("||||input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
             //align
             find_match(input_seq_no, input_seq, input_seq_len, &ref_start_g,
                        aligned_prev, aligned_next, aligned_seqs, dstr, dstr_encode, fout);
@@ -916,7 +916,7 @@ compress_input_file(dc_s8_t *data, dc_u32_t datasize, dc_s8_t *output_name)
     }
     if( input_seq_len > 0 )
 	{
-        printf("~~~~input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
+        //printf("~~~~input_seq_no: %d\ninput_seq: %s[%d]\n", input_seq_no, input_seq, input_seq_len);
         //align
         find_match(input_seq_no, input_seq, input_seq_len, &ref_start_g,
                    aligned_prev, aligned_next, aligned_seqs, dstr, dstr_encode, fout);

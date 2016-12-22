@@ -142,7 +142,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
 
     dcs_msg_t *msgp = NULL;
     //chunk_info_t *chunk_detail = NULL;
-    //sha_array_t *sha_array = NULL;
+    sha_array_t *sha_array = NULL;
     dcs_datamap_t *datamap = NULL;
     
 
@@ -482,6 +482,14 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
 
     //bufsize = bufsize + strlen((dcs_s8_t *)sha_array);
     //bufsize = bufsize + total_sha_num*sizeof(sha_array_t);
+    //by bxz
+    sha_array = (sha_array_t *)malloc(sizeof(sha_array_t));
+    sha_array->chunksize = bufsize;
+    sha_array->offset = fileoffset;
+    memcpy(sha_array->sha, tmpsha, SHA_LEN);
+    printf("||send chunk info: size: %d, offset: %lu, sha: %s\n", sha_array->chunksize, sha_array->offset, sha_array->sha);
+    //by bxz end
+    
     bufsize = bufsize + sizeof(sha_array_t);
     buf = (dcs_s8_t *)malloc(bufsize);
     if(buf == NULL){
@@ -495,7 +503,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     /*send FP + data to compressor*/
     //memcpy(buf, sha_array, total_sha_num*sizeof(sha_array_t));
     //memcpy(buf + total_sha_num*sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
-    memcpy(buf, tmpsha, sizeof(sha_array_t));
+    memcpy(buf, (dcs_s8_t *)sha_array, sizeof(sha_array_t));
     memcpy(buf + sizeof(sha_array_t), req->req_iov->ak_addr, req->req_iov->ak_len);
 
     //DCS_MSG("__dcs_write_server ready to send data to the %dth compressor \n", (target + 1));
@@ -533,11 +541,13 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     //get data stored position from the compressor
     msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp2d + AMP_MESSAGE_HEADER_LEN);
     data_pos = (dcs_datapos_t *)((dcs_s8_t *)msgp->buf);
+    /*
     if(data_pos == NULL){
         DCS_ERROR("__dcs_write_server get data_pos from reply msg err");
         rc = -1;
-        //goto EXIT;
+        goto EXIT;
     }
+     */
 
     //merge the data position and other chunkinfo to chunk mapping info
     //datamap = __dcs_server_chunkinfo_merge(data_pos, sha_array, total_sha_num);
@@ -587,7 +597,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         DCS_ERROR("__dcs_write_server reply to client err:%d \n", errno);
         goto EXIT;
     }
-    printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
     if (filetype == DCS_FILETYPE_FASTA) {
         printf("got file type: FASTA!\n");
     } else if (filetype == DCS_FILETYPE_FASTQ) {
@@ -1007,14 +1017,14 @@ dcs_u32_t __dcs_server_write_finish(dcs_u64_t inode,
 
     DCS_ERROR("__dcs_server_write_finish enter \n");
 
-    /*write back file mapping info*/
-    rc = __dcs_server_mapinfo_wb(inode, timestamp, clientid, size);
+    //write back file mapping info
+    //rc = __dcs_server_mapinfo_wb(inode, timestamp, clientid, size);
     if(rc != 0){
         DCS_ERROR("__dcs_server_write_finish mapinfo wb err:%d \n", rc);
         goto EXIT;
     }
 
-    /*send finish reply to client*/
+    //send finish reply to client
     msg_size = sizeof(dcs_msg_t) + AMP_MESSAGE_HEADER_LEN;
     repmsgp = (amp_message_t *)malloc(msg_size);
     if(repmsgp == NULL){

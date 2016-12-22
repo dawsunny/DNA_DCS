@@ -10,7 +10,9 @@
 #ifndef _DSRC_H
 #define _DSRC_H
 
+#include "ds_defs.h"
+
 void usage();
-int dsrc_main(int, _TCHAR*);  //by bxz
+int dsrc_main(uint32, char *, char *);  //by bxz
 
 #endif
