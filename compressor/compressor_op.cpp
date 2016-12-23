@@ -631,7 +631,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         get_location(output_name, chunk_info->sha, DCS_WRITE);
         dc_c_main(datap, datasize, output_name);
     } else if (filetype == DCS_FILETYPE_FASTQ) {
-        sprintf(input_name, "./input.fq");
+        sprintf(input_name, "./input.fq_%d", seqno++);
         sprintf(output_name, "./output.ds");
 
         filep = fopen(input_name, "w+");

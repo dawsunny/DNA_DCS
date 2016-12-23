@@ -709,27 +709,51 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         memset(line_buf, 0, FQ_LINE_SIZE);
         
         filest.open(filename, ios::in);
-        filest.getline(line_buf, FQ_LINE_SIZE, '\n');
-        strstr = line_buf;
+        cnt_rec = FQ_CNT_REC * 4;
         while (!filest.eof()) {
             filest.getline(line_buf, FQ_LINE_SIZE, '\n');
-            strtmp = line_buf;
-            strstr += "\n" + strtmp;
+            if (cnt_rec == FQ_CNT_REC * 4) {
+                strstr = line_buf;
+            } else {
+                strtmp = line_buf;
+                strstr += "\n" + strtmp;    //NOTICE: the last line of each block has no '\n' [bxz]
+            }
+            cnt_rec--;
+            if (cnt_rec <= 0) {
+                memcpy(buf, strstr.c_str(), strstr.size());
+                c2s_datainfo.size = strlen(buf);
+                c2s_datainfo.offset = fileoffset;
+                c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+                c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
+                c2s_datainfo.finish = 0;
+                fileoffset = fileoffset + strlen(buf);
+                rc = clt_send_data(c2s_datainfo, buf, threadp);
+                if(rc != 0){
+                    DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
+                    goto EXIT;
+                }
+                memset(buf, 0, FQ_CHUNK_SIZE);
+                strstr = "";
+                memset(buf, 0, FQ_CHUNK_SIZE);
+                cnt_rec = FQ_CNT_REC * 4;
+            }
         }
         filest.close();
-        memcpy(buf, strstr.c_str(), strstr.size());
-        c2s_datainfo.size = strlen(buf);
-        c2s_datainfo.offset = fileoffset;
-        c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
-        c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
-        c2s_datainfo.finish = 0;
-        fileoffset = fileoffset + strlen(buf);
-        rc = clt_send_data(c2s_datainfo, buf, threadp);
-        if(rc != 0){
-            DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
-            goto EXIT;
+        if (strstr.size() > 0) {
+            memcpy(buf, strstr.c_str(), strstr.size());
+            c2s_datainfo.size = strlen(buf);
+            c2s_datainfo.offset = fileoffset;
+            c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+            c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
+            c2s_datainfo.finish = 0;
+            fileoffset = fileoffset + strlen(buf);
+            rc = clt_send_data(c2s_datainfo, buf, threadp);
+            if(rc != 0){
+                DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
+                goto EXIT;
+            }
+            memset(buf, 0, FQ_CHUNK_SIZE);
         }
-        memset(buf, 0, FQ_CHUNK_SIZE);
         
         /*
         cnt_rec = FQ_CNT_REC;
