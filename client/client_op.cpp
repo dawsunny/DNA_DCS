@@ -727,6 +727,9 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                 c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
                 c2s_datainfo.finish = 0;
                 fileoffset = fileoffset + strlen(buf);
+                if (fileoffset < filesize) {
+                    fileoffset++;       //plus the last return character
+                }
                 rc = clt_send_data(c2s_datainfo, buf, threadp);
                 if(rc != 0){
                     DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
