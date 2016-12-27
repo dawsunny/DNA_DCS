@@ -332,6 +332,7 @@ dcs_s32_t __dcs_clt_get_filename(dcs_s8_t *path)
         goto EXIT;
     } else {
         DCS_ERROR("__dcs_clt_get_filename not a reguler file or file not exists \n");
+        rc = -1;
         goto EXIT;
     }
 
@@ -709,6 +710,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         memset(line_buf, 0, FQ_LINE_SIZE);
         
         filest.open(filename, ios::in);
+        
         cnt_rec = FQ_CNT_REC * 4;
         while (!filest.eof()) {
             filest.getline(line_buf, FQ_LINE_SIZE, '\n');

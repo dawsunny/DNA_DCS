@@ -631,14 +631,15 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         get_location(output_name, chunk_info->sha, DCS_WRITE);
         dc_c_main(datap, datasize, output_name);
     } else if (filetype == DCS_FILETYPE_FASTQ) {
-        sprintf(input_name, "./input.fq_%d", seqno++);
-        sprintf(output_name, "./output.ds");
+        sprintf(input_name, "./input.fq_%d", seqno);
+        sprintf(output_name, "./output.ds_%d", seqno);
+        seqno++;
 
         filep = fopen(input_name, "w+");
         fwrite(datap, 1, datasize, filep);
         fclose(filep);
         
-        dsrc_main(DCS_WRITE, input_name, output_name);
+        dsrc_main(datap, datasize, DCS_WRITE, input_name, output_name);
     } else {
         DCS_ERROR("__dcs_compressor_write got file type[%d] error\n", filetype);
         rc = -1;

@@ -56,10 +56,10 @@ enum dcs_comp_type{
 
 //by bxz
 #define FA_CHUNK_SIZE (400*1024*1024)
-#define FQ_CHUNK_SIZE (400*1024*1024)
+#define FQ_CHUNK_SIZE (40*1024*1024)
 
 #define FQ_LINE_SIZE 512
-#define FQ_CNT_REC ((1 << 14)*32)
+#define FQ_CNT_REC (1 << 14)
 #define COMPRESSOR_OUTPUT_FILE_LEN 6
 
 /*bloom filter size*/

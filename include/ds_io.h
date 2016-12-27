@@ -13,7 +13,9 @@
 #include "ds_defs.h"
 #include "ds_config.h"
 #include "ds_huffman.h"
+#include "dcs_const.h"
 #include <iostream>
+#include <cstring>
 using namespace std;
 
 typedef enum {mode_none, mode_read, mode_write, mode_read_ra} t_mode;
@@ -126,6 +128,11 @@ class CFastqFile {
 	t_mode mode;
 
 	static int32 IO_BUFFER_SIZE;
+    
+    //bxz
+    char *data;
+    uint32 datasize;
+    uint32 dataoffset;
 
 	inline int32 Getc();
 	inline void UnGetc();
@@ -147,15 +154,20 @@ public:
 		io_buffer_size = 0;
 		io_eof = false;
 		mode = mode_none;
+        
+        data = new char[FQ_CHUNK_SIZE];
+        datasize = 0;
+        dataoffset = 0;
 	};
 
 	~CFastqFile() {
 		delete[] io_buffer;
+        delete[] data;
 		if(file)
 			fclose(file);
 	}
 
-	bool Open(char *file_name);
+	bool Open(char *data, uint32);
 	bool Create(char *file_name);
 	bool Close();
 	bool ReadRecord(CFastqRecord &rec);
@@ -173,7 +185,12 @@ int32 CFastqFile::Getc()
 
 	if(io_buffer_pos == -1)
 	{
-		io_buffer_size = (uint32) fread(io_buffer, 1, IO_BUFFER_SIZE, file);
+		//io_buffer_size = (uint32) fread(io_buffer, 1, IO_BUFFER_SIZE, file);
+        memset(io_buffer, 0, IO_BUFFER_SIZE);
+        memcpy(io_buffer, data + dataoffset, IO_BUFFER_SIZE);
+        io_buffer_size = strlen((char *)io_buffer);
+        dataoffset += io_buffer_size;
+        
 		if(io_buffer_size == 0)
 		{
 			io_eof = true;

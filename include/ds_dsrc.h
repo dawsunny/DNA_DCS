@@ -13,6 +13,6 @@
 #include "ds_defs.h"
 
 void usage();
-int dsrc_main(uint32, char *, char *);  //by bxz
+int dsrc_main(char *, uint32, uint32, char *, char *);  //by bxz
 
 #endif

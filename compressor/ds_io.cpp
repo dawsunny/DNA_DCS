@@ -136,17 +136,40 @@ void CFastqRecord::Reset()
 }
 
 // ********************************************************************************************
-bool CFastqFile::Open(char *file_name)
+bool CFastqFile::Open(char *data1, uint32 datasize1)
 {
-	if((file = my_fopen(file_name, "rb")) != NULL)
-		mode = mode_read;
+    //bxz
+	//if((file = my_fopen(file_name, "rb")) != NULL)
+	//	mode = mode_read;
+    file = NULL;
+    if (io_buffer) {
+        delete[] io_buffer;
+        io_buffer = NULL;
+    }
+    io_buffer = new unsigned char[IO_BUFFER_SIZE];
+    io_buffer_pos = -1;
+    io_buffer_size = 0;
+    io_eof = false;
+    if (data) {
+        delete[] data;
+        data = NULL;
+    }
+    data = new char[FQ_CHUNK_SIZE];
+    dataoffset = 0;
+    
+    memcpy(data, data1, datasize1);
+    datasize = datasize1;
+    mode = mode_read;
+    file_pos = 0;
 
 	if(mode != mode_read)
 		return false;
 
-	my_fseek(file, 0, SEEK_END);
-	file_size = my_ftell(file);
-	my_fseek(file, 0, SEEK_SET);
+	//my_fseek(file, 0, SEEK_END);
+	//file_size = my_ftell(file);
+	//my_fseek(file, 0, SEEK_SET);
+    
+    file_size = datasize;
 
 	return true;
 }

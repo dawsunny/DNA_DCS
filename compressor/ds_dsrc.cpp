@@ -47,7 +47,7 @@ void usage()
 // ********************************************************************************************
 //
 // ********************************************************************************************
-int dsrc_main(dcs_u32_t op_type, char *input_file_name, char *output_file_name)
+int dsrc_main(char *data, uint32 datasize,  dcs_u32_t op_type, char *input_file_name, char *output_file_name)
 {
     /*
 	if(argc < 4 || strcmp(argv[argc-1], argv[argc-2]) == 0)
@@ -96,7 +96,7 @@ int dsrc_main(dcs_u32_t op_type, char *input_file_name, char *output_file_name)
     
     //bxz
     if (op_type == DCS_WRITE) {
-        compress(input_file_name, output_file_name, 0, 0);
+        compress(data, datasize, output_file_name, 0, 0);
     } else if (op_type == DCS_READ) {
         decompress(input_file_name, output_file_name);
     }

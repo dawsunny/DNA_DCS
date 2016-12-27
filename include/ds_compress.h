@@ -17,7 +17,7 @@
 
 using namespace std;
 
-bool compress(char *in_file_name, char *out_file_name, bool try_lz, uint32 max_lz_memory);
+bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uint32 max_lz_memory);
 bool decompress(char *in_file_name, char *out_file_name);
 bool extract_record(char *in_file_name, char *out_file_name, uint64 rec_id);
 

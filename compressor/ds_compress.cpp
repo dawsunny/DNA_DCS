@@ -21,9 +21,9 @@ using namespace std;
 
 CFastqFile FastqFile;
 
-bool compress(char *in_file_name, char *out_file_name, bool try_lz, uint32 max_lz_memory)
+bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uint32 max_lz_memory)
 {
-	if(!FastqFile.Open(in_file_name))
+	if(!FastqFile.Open(data, datasize))
 		return false;
 
 	CFastqRecord rec;
@@ -32,7 +32,7 @@ bool compress(char *in_file_name, char *out_file_name, bool try_lz, uint32 max_l
 	clock_t t1 = clock();
 
 	comp_file.Create(out_file_name, try_lz, max_lz_memory);
-	cout << "Compressing " << in_file_name << " of size " << FastqFile.GetFileSize() / 1000000 << "MB\n";
+	cout << "Compressing " << " of size " << FastqFile.GetFileSize() / 1000000 << "MB\n";
 
 	int64 file_pos;
 	int64 comp_file_pos;
