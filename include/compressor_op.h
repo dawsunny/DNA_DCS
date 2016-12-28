@@ -26,9 +26,15 @@ sha_sample_t *get_sample_fp(dcs_u8_t *sha, dcs_u32_t chunk_num);
 dcs_u64_t find_champion_container(container_t *con_id);
 
 //by bxz
-dcs_s32_t get_location(dcs_s8_t *, dcs_u8_t *, dcs_u32_t);
-extern pthread_mutex_t compressor_location_lock;
-extern map<string, string> compressor_location;
-extern dcs_u32_t compressor_location_cnt;
+dcs_s32_t get_location_fa(dcs_s8_t *, dcs_u8_t *, dcs_u32_t);
+dcs_s32_t get_location_fq(dcs_s8_t *, dcs_u8_t *, dcs_u32_t, dcs_u32_t);
+dcs_s32_t do_write_map(map<string, string> &, dcs_u32_t);
+extern pthread_mutex_t compressor_location_fa_lock;
+extern pthread_mutex_t compressor_location_fq_lock;
+extern map<string, string> compressor_location_fa;
+extern map<string, string> compressor_location_fq;
+extern dcs_u32_t compressor_location_fa_cnt;
+extern dcs_u32_t compressor_location_fq_cnt;
+extern dcs_u32_t compressor_location_fq_cnt_local;
 
 #endif

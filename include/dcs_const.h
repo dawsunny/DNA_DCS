@@ -108,7 +108,11 @@ enum dcs_comp_type{
 #define MAP_FILE_PATH1 		CONF_DIR"/server/mapfile1"
 #define MAP_FILE_PATH2 		CONF_DIR"/server/mapfile2"
 #define DATA_CONTAINER_PATH 	CONF_DIR"/compressor/data"
+#define FASTA_CONTAINER_PATH 	CONF_DIR"/compressor/data/fa"
+#define FASTQ_CONTAINER_PATH 	CONF_DIR"/compressor/data/fq"
 #define FP_CONTAINER_PATH 	CONF_DIR"/compressor/fp"
+#define FASTA_MAP_PATH 	CONF_DIR"/compressor/map/fa.map"
+#define FASTQ_MAP_PATH 	CONF_DIR"/compressor/map/fq.map"
 #define CLIENT_MD_PATH 		CONF_DIR"/client/md"
 /*by zhj fp file size*/
 #define INDEX_PATH 		CONF_DIR"/compressor/hash_index/index"

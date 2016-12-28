@@ -37,28 +37,169 @@
 
 #include <sstream>
 #include <string>
-
+#include <iostream>
 #include "dc_c_global.h"
 #include "ds_dsrc.h"
 using namespace std;
 
-pthread_mutex_t compressor_location_lock = PTHREAD_MUTEX_INITIALIZER;
-map<string, string> compressor_location;
-dcs_u32_t compressor_location_cnt = 0;
+pthread_mutex_t compressor_location_fa_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t compressor_location_fq_lock = PTHREAD_MUTEX_INITIALIZER;
+map<string, string> compressor_location_fa;
+map<string, string> compressor_location_fq;
+dcs_u32_t compressor_location_fa_cnt = 0;
+dcs_u32_t compressor_location_fq_cnt = 0;
+dcs_u32_t compressor_location_fq_cnt_local = 0;
 
 //by bxz
-dcs_s32_t get_location(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
+dcs_s32_t do_write_map(map<string, string> &compressor_location, dcs_u32_t filetype) {
+    dcs_s32_t rc = 0;
+    DCS_MSG("do_write_map enter\n");
+    FILE *filep = NULL;
+    dcs_u32_t tmp = 0;
+    map<string, string>::iterator it;
+    if (filetype == DCS_FILETYPE_FASTA) {
+        if ((filep = fopen(FASTA_MAP_PATH, "wb")) == NULL) {
+            DCS_ERROR("do_write_map open FASTA_MAP_PATH error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else if (filetype == DCS_FILETYPE_FASTQ) {
+        if ((filep = fopen(FASTQ_MAP_PATH, "wb")) == NULL) {
+            DCS_ERROR("do_write_map open FASTA_MAP_PATH error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else {
+        DCS_ERROR("do_write_map filetype[%u] error\n", filetype);
+        rc = -1;
+        goto EXIT;
+    }
+    tmp = compressor_location.size();
+    if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+        DCS_ERROR("do_write_map write size error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    for (it = compressor_location.begin(); it != compressor_location.end(); ++it) {
+        tmp = it->first.size();
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write the size of[%s] error\n", it->first.c_str());
+            rc = -1;
+            goto EXIT;
+        }
+        
+        if ((fwrite(it->first.c_str(), 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_write_map write [%s] error\n", it->first.c_str());
+            rc = -1;
+            goto EXIT;
+        }
+        
+        tmp = it->second.size();
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write the size of[%s] error\n", it->second.c_str());
+            rc = -1;
+            goto EXIT;
+        }
+        if ((fwrite(it->second.c_str(), 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_write_map write [%s] error\n", it->second.c_str());
+            rc = -1;
+            goto EXIT;
+        };
+    }
+EXIT:
+    if (filep != NULL) {
+        fclose(filep);
+    }
+    DCS_MSG("do_write_map leave\n");
+    return rc;
+}
+
+dcs_s32_t do_read_map(map<string, string>& compressor_location, dcs_u32_t filetype) {
+    dcs_s32_t rc = 0;
+    DCS_MSG("do_read_map enter\n");
+    FILE *filep = NULL;
+    dcs_u32_t size = 0, tmp = 0, i = 0;
+    char *item1 = (char *)malloc(SHA_LEN + 1);
+    char *item2 = (char *)malloc(SHA_LEN + 1);
+    string str1 = "", str2 = "";
+    compressor_location.clear();
+    if (filetype == DCS_FILETYPE_FASTA) {
+        if ((filep = fopen(FASTA_MAP_PATH, "rb")) == NULL) {
+            DCS_ERROR("do_read_map open FASTA_MAP_PATH error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else if (filetype == DCS_FILETYPE_FASTQ) {
+        if ((filep = fopen(FASTQ_MAP_PATH, "rb")) == NULL) {
+            DCS_ERROR("do_read_map open FASTA_MAP_PATH error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else {
+        DCS_ERROR("do_read_map filetype[%u] error\n", filetype);
+        rc = -1;
+        goto EXIT;
+    }
+    if ((fread(&size, sizeof(dcs_u32_t), 1, filep)) != 1) {
+        DCS_ERROR("do_read_map read size error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    for (i = 0; i < size; ++i) {
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_read_map read the first size error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        memset(item1, 0, SHA_LEN + 1);
+        if ((fread(item1, 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_read_map read the first string error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        str1= item1;
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_read_map read the second size error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        memset(item2, 0, SHA_LEN + 1);
+        if ((fread(item2, 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_read_map read the second string error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        str2 = item2;
+        compressor_location[str1] = str2;
+    }
+EXIT:
+    if (filep != NULL) {
+        fclose(filep);
+    }
+    if (item1) {
+        free(item1);
+        item1 = NULL;
+    }
+    if (item2) {
+        free(item2);
+        item2 = NULL;
+    }
+    DCS_MSG("do_read_map leave\n");
+    return rc;
+}
+
+dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
     dcs_s32_t rc = 0;
     dcs_s32_t fd = 0;
     memset(res, 0, PATH_LEN);
-    memcpy(res, DATA_CONTAINER_PATH, strlen(DATA_CONTAINER_PATH));
+    memcpy(res, FASTA_CONTAINER_PATH, strlen(FASTA_CONTAINER_PATH));
     res[strlen(res)] = '/';
     if (optype == DCS_WRITE) {
         string strstr = "";
         stringstream is;
         
-        pthread_mutex_lock(&compressor_location_lock);
-        is << compressor_location_cnt;
+        pthread_mutex_lock(&compressor_location_fa_lock);
+        is << compressor_location_fa_cnt;
         is >> strstr;
         for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
             swap(strstr[i], strstr[j]);
@@ -69,27 +210,117 @@ dcs_s32_t get_location(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
         for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
             swap(strstr[i], strstr[j]);
         }
-        compressor_location_cnt++;
+        compressor_location_fa_cnt++;
         string shatmptmp = (dcs_s8_t *)sha;
-        compressor_location[shatmptmp] = strstr;
-        pthread_mutex_unlock(&compressor_location_lock);
+        compressor_location_fa[shatmptmp] = strstr;
+        do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
+        pthread_mutex_unlock(&compressor_location_fa_lock);
         
         memcpy(res + strlen(res), strstr.c_str(), strstr.size());
         
-        printf("||location: %s\n", res);
         if (access(res, 0)) {
-            if ((fd = open(res, O_WRONLY | O_CREAT, 0666)) < 0) {
-                DCS_ERROR("get_location: open dir error\n");
+            if (mkdir(res, 0755) == -1) {
+                DCS_ERROR("get_location_fa: mkdir error\n");
                 rc = -1;
                 goto EXIT1;
             }
-            close(fd);
         } else {
-            printf("get location: dir already exists!\n");
+            DCS_ERROR("get_location_fa dir[%s] already exists!\n", res);
             rc = -1;
             goto EXIT1;
         }
-    } else {
+        memcpy(res + strlen(res), "/000000", strlen("/000000"));
+        if ((fd = open(res, O_WRONLY | O_CREAT, 0666)) < 0) {
+            DCS_ERROR("get_location_fa: open/create file[%s] error\n", res);
+            rc = -1;
+            goto EXIT1;
+        }
+        close(fd);
+    } else if (optype == DCS_READ){
+        
+    }
+    goto EXIT;
+    
+EXIT1:
+    if (res != NULL) {
+        free(res);
+        res = NULL;
+    }
+    
+EXIT:
+    return rc;
+}
+
+dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u32_t finish) {
+    dcs_s32_t rc = 0;
+    dcs_s32_t fd = 0;
+    memset(res, 0, PATH_LEN);
+    memcpy(res, FASTQ_CONTAINER_PATH, strlen(FASTQ_CONTAINER_PATH));
+    res[strlen(res)] = '/';
+    if (optype == DCS_WRITE) {
+        string strstr = "";
+        stringstream is;
+        
+        pthread_mutex_lock(&compressor_location_fq_lock);
+        is << compressor_location_fq_cnt;
+        is >> strstr;
+        for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
+            swap(strstr[i], strstr[j]);
+        }
+        while (strstr.size() < COMPRESSOR_OUTPUT_FILE_LEN) {
+            strstr += '0';
+        }
+        for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
+            swap(strstr[i], strstr[j]);
+        }
+        //compressor_location_cnt_fq++;
+        string shatmptmp = (dcs_s8_t *)sha;
+        compressor_location_fq[shatmptmp] = strstr;
+        do_write_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
+        pthread_mutex_unlock(&compressor_location_fq_lock);
+        
+        memcpy(res + strlen(res), strstr.c_str(), strstr.size());
+        
+        if (access(res, 0)) {
+            if (mkdir(res, 0755) == -1) {
+                DCS_ERROR("get_location_fq: mkdir error\n");
+                rc = -1;
+                goto EXIT1;
+            }
+        }
+        is.clear();
+        strstr = "";
+        pthread_mutex_lock(&compressor_location_fq_lock);
+        is << compressor_location_fq_cnt_local;
+        is >> strstr;
+        for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
+            swap(strstr[i], strstr[j]);
+        }
+        while (strstr.size() < COMPRESSOR_OUTPUT_FILE_LEN) {
+            strstr += '0';
+        }
+        for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
+            swap(strstr[i], strstr[j]);
+        }
+        compressor_location_fq_cnt_local++;
+        if (finish) {
+            compressor_location_fq_cnt_local = 0;
+            compressor_location_fq_cnt++;
+        }
+        pthread_mutex_unlock(&compressor_location_fq_lock);
+        sprintf(res, "%s/%s", res, strstr.c_str());
+        if (access(res, 0) == 0) {
+            DCS_ERROR("get_location_fq dir[%s] already exists!\n", res);
+            rc = -1;
+            goto EXIT1;
+        }
+        if ((fd = open(res, O_WRONLY | O_CREAT, 0666)) < 0) {
+            DCS_ERROR("get_location_fq: open/create file[%s] error\n", res);
+            rc = -1;
+            goto EXIT1;
+        }
+        close(fd);
+    } else if (optype == DCS_READ){
         
     }
     goto EXIT;
@@ -573,6 +804,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     FILE *filep = NULL; //bxz
     static int seqno = 0;
     char *input_name, *output_name;
+    map<string, string>::iterator it;
 
     DCS_ENTER("__dcs_compressor_write enter \n");
 
@@ -628,25 +860,52 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     input_name = (char *)malloc(PATH_LEN);
     output_name = (char *)malloc(PATH_LEN);
     if (filetype == DCS_FILETYPE_FASTA) {
-        get_location(output_name, chunk_info->sha, DCS_WRITE);
+        rc = get_location_fa(output_name, chunk_info->sha, DCS_WRITE);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_compressor_write get_location_fa error\n");
+            goto EXIT;
+        }
         dc_c_main(datap, datasize, output_name);
     } else if (filetype == DCS_FILETYPE_FASTQ) {
         sprintf(input_name, "./input.fq_%d", seqno);
-        sprintf(output_name, "./output.ds_%d", seqno);
+        //sprintf(output_name, "./output.ds_%d", seqno);
         seqno++;
 
         filep = fopen(input_name, "w+");
         fwrite(datap, 1, datasize, filep);
         fclose(filep);
-        
+        rc = get_location_fq(output_name, chunk_info->sha, DCS_WRITE, 0);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_compressor_write get_location_fq error\n");
+            goto EXIT;
+        }
+        printf("~~~%s\n", output_name);
         dsrc_main(datap, datasize, DCS_WRITE, input_name, output_name);
     } else {
         DCS_ERROR("__dcs_compressor_write got file type[%d] error\n", filetype);
         rc = -1;
         goto EXIT;
     }
+    //used for debug
+    /*
+    printf("the contents of map written: \n");
+    for (it = compressor_location_fq.begin(); it != compressor_location_fq.end(); ++it) {
+        cout << it->first << "\t" << it->second << endl;
+    }
+    cout << "[" << compressor_location_fq.size() << "]" << endl;
+    pthread_mutex_lock(&compressor_location_fq_lock);
+    if (do_read_map(compressor_location_fq, DCS_FILETYPE_FASTQ) != 0) {
+        DCS_ERROR("read map error\n");
+    }
+    printf("the contents of map read: \n");
+    for (it = compressor_location_fq.begin(); it != compressor_location_fq.end(); ++it) {
+        cout << it->first << "\t" << it->second << endl;
+    }
+    cout << "[" << compressor_location_fq.size() << "]" << endl;
+    pthread_mutex_unlock(&compressor_location_fq_lock);
+     */
     //DCS_MSG("6\n");
-    /*get sample FPs*/
+    //get sample FPs
     /*
     hook = get_sample_fp(sha, chunk_num);
     if(hook == NULL || hook->sha == NULL){
