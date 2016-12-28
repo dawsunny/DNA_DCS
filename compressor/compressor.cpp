@@ -121,7 +121,27 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
     }
     gettimeofday( &end_time, NULL );
     print_time("save_seed_loc", start_time, end_time);
-
+    
+    printf("Read FASTA map info, please wait...\n");
+    if (access(FASTA_MAP_PATH, 0) != 0) {
+        printf("no FASTA map info.\n");
+    } else {
+        pthread_mutex_lock(&compressor_location_fa_lock);
+        do_read_map(compressor_location_fa, DCS_FILETYPE_FASTA);
+        compressor_location_fa_cnt = compressor_location_fa.size();
+        pthread_mutex_unlock(&compressor_location_fa_lock);
+    }
+    printf("Read FASTQ map info, please wait...\n");
+    if (access(FASTQ_MAP_PATH, 0) != 0) {
+        printf("no FASTQ map info.\n");
+    } else {
+        pthread_mutex_lock(&compressor_location_fq_lock);
+        do_read_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
+        compressor_location_fq_cnt = compressor_location_fq.size();
+        compressor_location_fq_cnt_local = 0;
+        pthread_mutex_unlock(&compressor_location_fq_lock);
+    }
+    printf("Ready.\n");
     rc = __dcs_create_compressor_thread();
     if(rc != 0){
         DCS_ERROR("main __dcs_create_compressor_thread \n");

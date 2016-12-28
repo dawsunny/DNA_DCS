@@ -310,7 +310,7 @@ dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u3
         pthread_mutex_unlock(&compressor_location_fq_lock);
         sprintf(res, "%s/%s", res, strstr.c_str());
         if (access(res, 0) == 0) {
-            DCS_ERROR("get_location_fq dir[%s] already exists!\n", res);
+            DCS_ERROR("get_location_fq file [%s] already exists!\n", res);
             rc = -1;
             goto EXIT1;
         }
