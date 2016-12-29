@@ -32,7 +32,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 	clock_t t1 = clock();
 
 	comp_file.Create(out_file_name, try_lz, max_lz_memory);
-	cout << "Compressing " << " of size " << FastqFile.GetFileSize() / 1000000 << "MB\n";
+	//cout << "Compressing " << " of size " << FastqFile.GetFileSize() / 1000000 << "MB\n";
 
 	int64 file_pos;
 	int64 comp_file_pos;
@@ -42,6 +42,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 	{
 		comp_file.InsertRecord(rec);
 
+        /*
 		if((rec_no & (CSuperBlock::MAX_SIZE/8-1)) == 0)
 		{
 			file_pos      = FastqFile.GetFilePos();
@@ -63,6 +64,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 					cout << "   Comp. factor: " << (double) file_pos / comp_file_pos << ":1";
 			}
 		}
+         */
 		rec_no++;
 	}
 
@@ -71,6 +73,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 
 	file_pos      = FastqFile.GetFilePos();
 	comp_file_pos = comp_file.GetFilePos();
+    /*
 	cout << "\rProcessed " << file_pos / 1000000 << "MB (";
 	cout.precision(2);
 	cout.width(6);
@@ -85,6 +88,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 	if(comp_file_pos)
 		cout << "   Comp. factor: " << (double) file_pos / comp_file_pos << ":1";
 	cout << "\n";
+     */
 
 	return true;
 }

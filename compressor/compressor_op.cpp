@@ -213,7 +213,7 @@ dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
         compressor_location_fa_cnt++;
         string shatmptmp = (dcs_s8_t *)sha;
         compressor_location_fa[shatmptmp] = strstr;
-        do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
+        //do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
         pthread_mutex_unlock(&compressor_location_fa_lock);
         
         memcpy(res + strlen(res), strstr.c_str(), strstr.size());
@@ -276,7 +276,7 @@ dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u3
         //compressor_location_cnt_fq++;
         string shatmptmp = (dcs_s8_t *)sha;
         compressor_location_fq[shatmptmp] = strstr;
-        do_write_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
+        //do_write_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
         pthread_mutex_unlock(&compressor_location_fq_lock);
         
         memcpy(res + strlen(res), strstr.c_str(), strstr.size());
@@ -357,7 +357,7 @@ dcs_s32_t __dcs_compressor_process_req(amp_request_t *req, dcs_thread_t *threadp
     else if(op_type == DCS_READ){
         rc = __dcs_compressor_read(req);
         if(0 != rc){
-            DCS_ERROR("__dcs_compressor_write read : %d\n", rc);
+            DCS_ERROR("__dcs_compressor_read rc : %d\n", rc);
         }
     }
     else if(op_type == DCS_QUERY){
@@ -447,7 +447,7 @@ dcs_s32_t __dcs_compressor_upload(amp_request_t *req){
     size = sizeof(dcs_msg_t) + AMP_MESSAGE_HEADER_LEN;
     repmsgp = (amp_message_t *)malloc(size);
     if(repmsgp == NULL){
-        DCS_ERROR("__dcs_compressor_write malloc for repmsgp err:%d \n", errno);
+        DCS_ERROR("__dcs_compressor_upload malloc for repmsgp err:%d \n", errno);
         rc = errno;
         goto EXIT;
     }
@@ -486,7 +486,7 @@ dcs_s32_t __dcs_compressor_upload(amp_request_t *req){
                        req->req_remote_id,
                        0);
     if(rc < 0){
-        DCS_ERROR("__dcs_compressor_write send reply msg err:%d \n", rc);
+        DCS_ERROR("__dcs_compressor_upload send reply msg err:%d \n", rc);
         goto EXIT;
     }
 
@@ -837,7 +837,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     }
 
     memcpy(chunk_info, req->req_iov->ak_addr, sizeof(sha_array_t)*chunk_num);
-    printf("||got chunk info: size: %d, offset: %lu, sha: %s\n", chunk_info->chunksize, chunk_info->offset, chunk_info->sha);
+    //printf("||got chunk info: size: %d, offset: %lu, sha: %s\n", chunk_info->chunksize, chunk_info->offset, chunk_info->sha);
 
     for(i=0; i<chunk_num; i++){
         memcpy(sha + i*SHA_LEN, chunk_info[i].sha, SHA_LEN);
@@ -879,7 +879,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
             DCS_ERROR("__dcs_compressor_write get_location_fq error\n");
             goto EXIT;
         }
-        printf("~~~%s\n", output_name);
+        //printf("~~~%s\n", output_name);
         dsrc_main(datap, datasize, DCS_WRITE, input_name, output_name);
     } else {
         DCS_ERROR("__dcs_compressor_write got file type[%d] error\n", filetype);
@@ -977,6 +977,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     //printf("got msg: %s$\n", datap);
+    /*
     if (filetype == DCS_FILETYPE_FASTA) {
         printf("got file type: FASTA!\n");
     } else if (filetype == DCS_FILETYPE_FASTQ) {
@@ -984,6 +985,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     } else {
         printf("filetype error!\n");
     }
+     */
     
 EXIT:
     if(sha != NULL){

@@ -101,8 +101,8 @@ int dsrc_main(char *data, uint32 datasize,  dcs_u32_t op_type, char *input_file_
         decompress(input_file_name, output_file_name);
     }
 
-	cout << "Completed!\n";
-	cout << "Processing time: " << (double) (clock() - t1) / CLOCKS_PER_SEC << "s \n";
+	//cout << "Completed!\n";
+	//cout << "Processing time: " << (double) (clock() - t1) / CLOCKS_PER_SEC << "s \n";
 
 	return 0;
 }

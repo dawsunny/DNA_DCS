@@ -11,6 +11,7 @@
 #include "client_thread.h"
 #include "client_cnd.h"
 #include "client_op.h"
+#include "md5.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -506,6 +507,8 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     dcs_u32_t cnt_rec = 0;
     fstream filest;
     string strstr, strtmp;
+    double processed_rate = 0.1;
+    char *file_md5 = NULL;
 
     DCS_ENTER("__dcs_clt_write_file enter \n");
 
@@ -572,11 +575,28 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         goto EXIT;
     }
      */
+    file_md5 = (char *)malloc(33);
+    if (!file_md5) {
+        DCS_ERROR("__dcs_clt_write_file malloc for file_md5 error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    memset(file_md5, 0, 33);
 
     filesize = (dcs_u64_t)(f_state.st_size);
     //bxz
     //close(write_fd);
     //filep = fopen(filename, "r");
+    printf("Computing MD5 of the file, please wait...\n");
+    rc = MD5_file(filename, file_md5);
+    if (rc != 0) {
+        DCS_ERROR("__dcs_clt_write_file compute md5 error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    
+    printf("The MD5 of file %s is:\n%s\n", filename, file_md5);
+    printf("Processing, please wait...\n");
     
     if (clt_filetype == DCS_FILETYPE_FASTA) {
         write_fd = open(filename, O_RDONLY, 0666);
@@ -737,6 +757,10 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                     DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
                     goto EXIT;
                 }
+                if (((double)fileoffset) / filesize >= processed_rate) {
+                    printf("%.2f%% done.\n", ((double)fileoffset) / filesize * 100);
+                    processed_rate += 0.1;
+                }
                 memset(buf, 0, FQ_CHUNK_SIZE);
                 strstr = "";
                 memset(buf, 0, FQ_CHUNK_SIZE);
@@ -759,7 +783,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             }
             memset(buf, 0, FQ_CHUNK_SIZE);
         }
-        
+        printf("100.00%% done.\n");
         /*
         cnt_rec = FQ_CNT_REC;
         filep = fopen(filename, "r");

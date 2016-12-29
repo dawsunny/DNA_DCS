@@ -487,7 +487,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     sha_array->chunksize = bufsize;
     sha_array->offset = fileoffset;
     memcpy(sha_array->sha, tmpsha, SHA_LEN);
-    printf("||send chunk info: size: %d, offset: %lu, sha: %s\n", sha_array->chunksize, sha_array->offset, sha_array->sha);
+    //printf("||send chunk info: size: %d, offset: %lu, sha: %s\n", sha_array->chunksize, sha_array->offset, sha_array->sha);
     //by bxz end
     
     bufsize = bufsize + sizeof(sha_array_t);
@@ -598,6 +598,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         goto EXIT;
     }
     //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+    /*
     if (filetype == DCS_FILETYPE_FASTA) {
         printf("got file type: FASTA!\n");
     } else if (filetype == DCS_FILETYPE_FASTQ) {
@@ -605,6 +606,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     } else {
         printf("filetype error!\n");
     }
+     */
 
 EXIT:
     //DCS_MSG("__dcs_write_server before free space \n");

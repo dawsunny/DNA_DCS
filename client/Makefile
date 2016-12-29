@@ -25,7 +25,8 @@ EXE_FILES = client
 OBJS =	client.o	\
 		client_cnd.o\
 		client_thread.o	\
-		client_op.o
+		client_op.o \
+        md5.o
 
 #LIB = libcom.a
 .cpp.o:
