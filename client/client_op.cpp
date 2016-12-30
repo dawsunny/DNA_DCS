@@ -575,19 +575,19 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         goto EXIT;
     }
      */
-    file_md5 = (char *)malloc(33);
+    file_md5 = (char *)malloc(MD5_STR_LEN + 1);
     if (!file_md5) {
         DCS_ERROR("__dcs_clt_write_file malloc for file_md5 error\n");
         rc = -1;
         goto EXIT;
     }
-    memset(file_md5, 0, 33);
+    memset(file_md5, 0, MD5_STR_LEN + 1);
 
     filesize = (dcs_u64_t)(f_state.st_size);
     //bxz
     //close(write_fd);
     //filep = fopen(filename, "r");
-    printf("Computing MD5 of the file, please wait...\n");
+    printf("Computing the MD5 of the file, please wait...\n");
     rc = MD5_file(filename, file_md5);
     if (rc != 0) {
         DCS_ERROR("__dcs_clt_write_file compute md5 error\n");
@@ -596,7 +596,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     }
     
     printf("The MD5 of file %s is:\n%s\n", filename, file_md5);
-    printf("Processing, please wait...\n");
+    printf("\nProcessing, please wait...\n");
     
     if (clt_filetype == DCS_FILETYPE_FASTA) {
         write_fd = open(filename, O_RDONLY, 0666);

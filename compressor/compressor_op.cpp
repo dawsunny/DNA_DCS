@@ -803,7 +803,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
 
     FILE *filep = NULL; //bxz
     static int seqno = 0;
-    char *input_name, *output_name;
+    char *input_name = NULL, *output_name = NULL;
     map<string, string>::iterator it;
 
     DCS_ENTER("__dcs_compressor_write enter \n");
@@ -859,6 +859,13 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     //fclose(filep);
     input_name = (char *)malloc(PATH_LEN);
     output_name = (char *)malloc(PATH_LEN);
+    if (input_name == NULL || output_name == NULL) {
+        DCS_ERROR("__dcs_compressor_write malloc for input_name/output_name error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(input_name, 0, PATH_LEN);
+    memset(output_name, 0, PATH_LEN);
     if (filetype == DCS_FILETYPE_FASTA) {
         rc = get_location_fa(output_name, chunk_info->sha, DCS_WRITE);
         if (rc != 0) {
@@ -867,13 +874,13 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         }
         dc_c_main(datap, datasize, output_name);
     } else if (filetype == DCS_FILETYPE_FASTQ) {
-        sprintf(input_name, "./input.fq_%d", seqno);
+        //sprintf(input_name, "./input.fq_%d", seqno);
         //sprintf(output_name, "./output.ds_%d", seqno);
-        seqno++;
+        //seqno++;
 
-        filep = fopen(input_name, "w+");
-        fwrite(datap, 1, datasize, filep);
-        fclose(filep);
+        //filep = fopen(input_name, "w+");
+        //fwrite(datap, 1, datasize, filep);
+        //fclose(filep);
         rc = get_location_fq(output_name, chunk_info->sha, DCS_WRITE, 0);
         if (rc != 0) {
             DCS_ERROR("__dcs_compressor_write get_location_fq error\n");

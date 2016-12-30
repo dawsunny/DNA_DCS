@@ -14,12 +14,7 @@
 #include <fcntl.h>
 #include <memory.h>
 #include "md5.h"
-
-
-#define READ_DATA_SIZE	4096
-#define MD5_SIZE		16
-#define MD5_STR_LEN		(MD5_SIZE * 2)
-
+#include "dcs_const.h"
 
 unsigned char PADDING[] =
 {
@@ -207,7 +202,7 @@ int MD5_file (char *file_path, char *md5_str)
     int i;
     int fd;
     int ret;
-    unsigned char data[READ_DATA_SIZE];
+    unsigned char data[MD5_READ_DATA_SIZE];
     unsigned char md5_value[MD5_SIZE];
     MD5_CTX md5;
     
@@ -223,7 +218,7 @@ int MD5_file (char *file_path, char *md5_str)
     
     while (1)
     {
-        ret = read(fd, data, READ_DATA_SIZE);
+        ret = read(fd, data, MD5_READ_DATA_SIZE);
         if (-1 == ret)
         {
             perror("read");
@@ -232,7 +227,7 @@ int MD5_file (char *file_path, char *md5_str)
         
         MD5Update(&md5, data, ret);
         
-        if (0 == ret || ret < READ_DATA_SIZE)
+        if (0 == ret || ret < MD5_READ_DATA_SIZE)
         {
             break;
         }

@@ -62,6 +62,10 @@ enum dcs_comp_type{
 #define FQ_CNT_REC (1 << 14)
 #define COMPRESSOR_OUTPUT_FILE_LEN 6
 
+#define MD5_READ_DATA_SIZE	4096
+#define MD5_SIZE		16
+#define MD5_STR_LEN		(MD5_SIZE * 2)
+
 /*bloom filter size*/
 /*multiple of 4k*/
 #define MASTER_BLOOM_SIZE  (1024*1024*128)
