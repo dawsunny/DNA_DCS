@@ -20,6 +20,7 @@
 #define DCS_UPLOAD 9 
 
 //add by bxz
+#define DCS_READ_QUERY 10
 #define DCS_FILETYPE_FASTA 100
 #define DCS_FILETYPE_FASTQ 200
 

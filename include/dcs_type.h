@@ -15,6 +15,16 @@ typedef int                dcs_s32_t;
 typedef unsigned long      dcs_u64_t;
 typedef long               dcs_s64_t;
 
+//by bxz
+struct _server_hash
+{
+    dcs_u32_t filetype;
+    dcs_u64_t filesize;
+    dcs_s32_t compressor_id;
+    dcs_s8_t md5[33];
+};
+typedef struct _server_hash server_hash_t;
+
 struct __dcs_thread
 {
     pthread_t thread;

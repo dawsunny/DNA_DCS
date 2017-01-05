@@ -32,10 +32,16 @@
 #include <semaphore.h>
 #include <openssl/sha.h>
 
+#include <map>
+#include <string>
+using namespace std;
+
 dcs_u32_t sign_num = 0;
 dcs_u64_t diskinfo[DCS_COMPRESSOR_NUM];
 dcs_u64_t disk_avg;
 pthread_mutex_t diskinfo_lock = PTHREAD_MUTEX_INITIALIZER;
+map<string, server_hash_t> server_table;
+pthread_mutex_t server_table_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*init the disk info*/
 dcs_s32_t __dcs_server_init_diskinfo()
@@ -67,6 +73,8 @@ dcs_s32_t __dcs_server_process_req(amp_request_t *req, dcs_thread_t *threadp)
     if(op_type == DCS_WRITE)
     {
         rc = __dcs_write_server(req, threadp);
+    } else if (op_type == DCS_READ_QUERY) {
+        rc = __dcs_readquery_server(req);
     }
     else if(op_type == DCS_READ){
         rc = __dcs_read_server(req);
@@ -82,6 +90,88 @@ dcs_s32_t __dcs_server_process_req(amp_request_t *req, dcs_thread_t *threadp)
 
 EXIT:
     DCS_LEAVE("__dcs_server_process_req leave \n");
+    return rc;
+}
+
+//by bxz
+dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
+    dcs_s32_t rc = 0;
+    dcs_msg_t *msgp = NULL;
+    amp_message_t *repmsgp = NULL;
+    dcs_u64_t reqsize;
+    dcs_s8_t filename1[PATH_LEN];
+    string filename;
+    dcs_u32_t clientid;
+    dcs_u32_t size = 0;
+    dcs_s32_t query_result = -1;
+    dcs_u32_t filetype = 0;
+    dcs_u64_t filesize = 0;
+    DCS_ENTER("__dcs_readquery_server enter\n");
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
+    reqsize = msgp->u.c2s_req.size;
+    clientid = msgp->fromid;
+    //filename = (dcs_s8_t *)req->req_iov->ak_addr;
+    memcpy(filename1, req->req_iov->ak_addr, req->req_iov->ak_len);
+    filename = filename1;
+    //filetype = msgp->filetype;
+    
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    repmsgp = (amp_message_t *)malloc(size);
+    if (repmsgp == NULL) {
+        DCS_ERROR("__dcs_readquery_server malloc for repmsgp error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    memset(repmsgp, 0, size);
+    memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    
+    pthread_mutex_lock(&server_table_lock);
+    if (server_table.find(filename) != server_table.end()) {
+        query_result = 1;
+        filetype = server_table[filename].filetype;
+        filesize = server_table[filename].filesize;
+    } else {
+        query_result = 0;
+    }
+    pthread_mutex_unlock(&server_table_lock);
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->msg_type = is_rep;
+    //msgp->size = size;
+    msgp->fromtype = DCS_SERVER;
+    msgp->fromid = server_this_id;
+    if (query_result == 1) {
+        msgp->filetype = filetype;
+        msgp->filesize = filesize;
+        msgp->ack = 1;
+        //req->req_iov = NULL;
+        req->req_type = AMP_REPLY | AMP_MSG;
+        printf("||||got!\n");
+    } else {
+        msgp->filetype = 0;
+        msgp->filesize = 0;
+        msgp->ack = 0;
+        //req->req_iov = NULL;
+        req->req_type = AMP_REPLY | AMP_MSG;
+        printf("||||not got!\n");
+    }
+    req->req_reply = repmsgp;
+    req->req_replylen = size;
+    req->req_need_ack = 0;
+    req->req_resent = 0;
+    
+    rc = amp_send_sync(server_comp_context, req, DCS_CLIENT, clientid, 0);
+    if (rc != 0) {
+        DCS_ERROR("__dcs_readquery_server send data to client error\n");
+        goto EXIT;
+    }
+    
+EXIT:
+    //if (repmsgp) {
+    //    free(repmsgp);
+    //    repmsgp = NULL;
+    //}
+    DCS_LEAVE("__dcs_readquery_server leave\n");
     return rc;
 }
 
@@ -146,6 +236,10 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     dcs_datamap_t *datamap = NULL;
     
 
+    dcs_s8_t tmp_filename[PATH_LEN];
+    string filename;
+    dcs_u64_t filesize;
+    dcs_s8_t file_md5[MD5_STR_LEN + 1];
     DCS_ENTER("__dcs_write_server enter \n");
     
     for(i=0; i<DCS_COMPRESSOR_NUM; i++){
@@ -160,25 +254,41 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         repmsgp2m[i] = NULL;
     }
 */
-    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
 
+    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
     
     //get msg info from client msg
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
     seqno = msgp->seqno;
     fromid = msgp->fromid;
     filetype = msgp->filetype;      //by bxz
+    filesize = msgp->filesize;      //by bxz
+    memcpy(file_md5, msgp->md5, MD5_STR_LEN);
     fileinode = msgp->u.c2s_req.inode;
     timestamp = msgp->u.c2s_req.timestamp;
     fileoffset = msgp->u.c2s_req.offset;
     bufsize = msgp->u.c2s_req.size;
     finish = msgp->u.c2s_req.finish;
+    printf("||||||MD5: %s\n", file_md5);
+
+    //by bxz
+    sprintf(tmp_filename, "%s_%u_%lu", msgp->u.c2s_req.filename, fromid, timestamp);
+    filename = tmp_filename;
+    printf("filename: %s\n", tmp_filename);
+    target = (file_md5[0] * 256 + file_md5[1]) % DCS_COMPRESSOR_NUM + 1;
+    
     if(finish){
         DCS_MSG("__dcs_write_server file %ld write finish \n", fileinode);
         rc = __dcs_server_write_finish(fileinode, timestamp, fromid, fileoffset, req); 
         goto EXIT;
     }
 
+    //by bxz
+    pthread_mutex_lock(&server_table_lock);
+    server_table[filename].filetype = filetype;
+    server_table[filename].filesize = filesize;
+    server_table[filename].compressor_id = target;
+    pthread_mutex_unlock(&server_table_lock);
     /*
     //do chunking job, fix or var chunk*
     if(server_chunk_type == FIX_CHUNK){
@@ -597,7 +707,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         DCS_ERROR("__dcs_write_server reply to client err:%d \n", errno);
         goto EXIT;
     }
-    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+    printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
     /*
     if (filetype == DCS_FILETYPE_FASTA) {
         printf("got file type: FASTA!\n");

@@ -20,6 +20,8 @@ struct __dcs_c2s_req
     dcs_u64_t offset;
     dcs_u64_t inode;
     dcs_u64_t timestamp;
+    dcs_u32_t target_server;    //bxz
+    dcs_s8_t filename[256];
 };
 typedef struct __dcs_c2s_req dcs_c2s_req_t;
 
@@ -136,6 +138,8 @@ struct __dcs_msg
     dcs_u32_t optype;     /*operation type*/
     dcs_u32_t ack;        /*common ack usual 1 means sucess*/
     dcs_u32_t filetype;  //FASTA(0)/FASTQ(1)   ***by bxz
+    dcs_u64_t filesize; //by bxz
+    dcs_s8_t md5[33];  //by bxz
     union{
         /*client related*/
         dcs_c2s_req_t c2s_req;               

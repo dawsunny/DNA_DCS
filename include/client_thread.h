@@ -9,6 +9,9 @@
 #include <semaphore.h>
 
 struct dcs_clt_file{
+    dcs_u32_t target_server;
+    dcs_u64_t filesize;
+    dcs_u32_t filetype;
     dcs_s8_t filename[256];
     struct list_head file_list;
 };

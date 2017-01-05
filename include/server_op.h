@@ -22,6 +22,7 @@ dcs_s32_t get_master_power();
 
 /*process read server*/
 dcs_s32_t __dcs_read_server(amp_request_t *req);
+dcs_s32_t __dcs_readquery_server(amp_request_t *req);  //bxz
 
 /*process read finish request*/
 dcs_s32_t __dcs_read_finish(dcs_u64_t inode, 
