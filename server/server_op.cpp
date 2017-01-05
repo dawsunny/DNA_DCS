@@ -288,6 +288,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     server_table[filename].filetype = filetype;
     server_table[filename].filesize = filesize;
     server_table[filename].compressor_id = target;
+    memcpy(server_table[filename].md5, file_md5, MD5_STR_LEN + 1);
     pthread_mutex_unlock(&server_table_lock);
     /*
     //do chunking job, fix or var chunk*

@@ -20,7 +20,7 @@ struct _server_hash
 {
     dcs_u32_t filetype;
     dcs_u64_t filesize;
-    dcs_s32_t compressor_id;
+    dcs_u32_t compressor_id;
     dcs_s8_t md5[33];
 };
 typedef struct _server_hash server_hash_t;
