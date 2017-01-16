@@ -46,7 +46,7 @@ dc_d_main(dc_s8_t *input, string &output, dc_u32_t datasize)
 	}
 
     gettimeofday( &start_time, NULL );
-	rc = dc_d_read_ref_file(FASTA_REF_PATH);     //read reference sequences from file
+	//rc = dc_d_read_ref_file(FASTA_REF_PATH);     //read reference sequences from file
 	if( rc )
 	{
 		DC_ERROR("error: dc_d_read_ref_file return error\n");
@@ -67,7 +67,7 @@ dc_d_main(dc_s8_t *input, string &output, dc_u32_t datasize)
     print_time("analyze_path", start_time, end_time);
 
 EXIT:
-	dc_d_free_memory();  //free the allocated memory
+	//dc_d_free_memory();  //free the allocated memory
 
     gettimeofday( &glo_end_time, NULL );
     print_time("main", glo_start_time, glo_end_time);

@@ -14,9 +14,12 @@
 #include <string>
 using namespace std;
 
-dc_s32_t   dc_d_ref_seq_total_no_g;
-dc_s8_t	 **dc_d_ref_seqs_g;
-dc_s32_t  *dc_d_ref_seqs_len_g;
+//dc_s32_t   dc_d_ref_seq_total_no_g;
+//dc_s8_t	 **dc_d_ref_seqs_g;
+//dc_s32_t  *dc_d_ref_seqs_len_g;
+extern dc_s32_t   dc_c_ref_seq_total_no_g;
+extern dc_s8_t	 **dc_c_ref_seqs_g;
+extern dc_s32_t  *dc_c_ref_seqs_len_g;
 
 int dc_d_DIF_RATE;
 int dc_d_OVERLAP;
@@ -108,6 +111,7 @@ EXIT:
 
 
 //read reference file, allocate and fill the reference buf
+/*
 dc_s32_t 
 dc_d_read_ref_file(dc_s8_t *ref_file_path)
 {
@@ -230,6 +234,7 @@ EXIT:
 	DC_PRINT("dc_d_read_ref_file leave\n");
 	return rc;
 }
+ */
 
 void
 write_to_file(vector<string> &inp_seqs, string &output)
@@ -282,6 +287,7 @@ write_to_file(vector<string> &inp_seqs, string &output)
     }
 }
 
+/*
 void
 dc_d_free_memory()
 {
@@ -312,4 +318,4 @@ dc_d_free_memory()
 
 	DC_PRINT("dc_d_free_memory leave\n");
 }
-
+*/

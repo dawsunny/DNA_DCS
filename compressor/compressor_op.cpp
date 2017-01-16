@@ -802,6 +802,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
 
     amp_message_t *repmsgp = NULL;
     dcs_msg_t   *msgp = NULL;
+    dcs_u32_t finish = 0;
 
     FILE *filep = NULL; //bxz
     static int seqno = 0;
@@ -820,11 +821,19 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     chunk_num = msgp->u.s2d_req.chunk_num;
     datasize = msgp->u.s2d_req.scsize;
     offset = msgp->u.s2d_req.offset;
+    finish = msgp->u.s2d_req.finish;
     memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);   //bxz
     file_md5 = file_md5_tmp;
     printf("md5: %s\n", file_md5_tmp);
     compressor_hash_t hash_tmp;
 
+    if (finish) {
+        rc = __dcs_compressor_write_finish(file_md5_tmp, filetype, req);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_compressor_write __dcs_compressor_write_finish error[%d]\n", rc);
+        }
+        goto EXIT;
+    }
     /*verification weather the data recieved is correct*/
     if(req->req_iov->ak_len != (chunk_num*sizeof(sha_array_t)) + datasize){
         rc = -1;
@@ -1075,6 +1084,67 @@ EXIT:
 
     return rc;
 }
+
+//__dcs_compressor_write_finish [by bxz]
+dcs_s32_t __dcs_compressor_write_finish(dcs_s8_t *md5, dcs_u32_t filetype, amp_request_t *req) {
+    dcs_s32_t rc = 0;
+    dcs_u32_t size = 0;
+    amp_message_t *repmsgp = NULL;
+    dcs_msg_t *msgp = NULL;
+    
+    DCS_ENTER("__dcs_compressor_write_finish enter\n");
+    
+    if (filetype == DCS_FILETYPE_FASTA) {
+        pthread_mutex_lock(&compressor_location_fa_lock);
+        compressor_location_fa_cnt++;
+        pthread_mutex_unlock(&compressor_location_fa_lock);
+    } else {
+        pthread_mutex_lock(&compressor_location_fq_lock);
+        compressor_location_fq_cnt++;
+        pthread_mutex_unlock(&compressor_location_fq_lock);
+    }
+    
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    repmsgp = (amp_message_t *)malloc(size);
+    if (repmsgp == NULL) {
+        DCS_ERROR("__dcs_compressor_write_finish malloc for repmsgp error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(repmsgp, 0, size);
+    memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->ack = 1;
+    req->req_iov = NULL;
+    req->req_niov = 0;
+    
+    req->req_reply =repmsgp;
+    req->req_replylen = size;
+    req->req_need_ack = 0;
+    req->req_resent = 0;
+    req->req_type = AMP_REPLY | AMP_MSG;
+    
+    rc = amp_send_sync(compressor_comp_context,
+                       req,
+                       req->req_remote_type,
+                       req->req_remote_id,
+                       0);
+    if (rc != 0) {
+        DCS_ERROR("__dcs_compressor_write_finish send reply to server error\n");
+        goto EXIT;
+    }
+    
+EXIT:
+    if (repmsgp) {
+        free(repmsgp);
+        repmsgp = NULL;
+    }
+    
+    DCS_LEAVE("__dcs_compressor_write_finish leave\n");
+    return  rc;
+}
+
 
 /*compressor read operation
  * get the datamap info from the request type 

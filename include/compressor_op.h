@@ -26,6 +26,7 @@ sha_sample_t *get_sample_fp(dcs_u8_t *sha, dcs_u32_t chunk_num);
 dcs_u64_t find_champion_container(container_t *con_id);
 
 //by bxz
+dcs_s32_t __dcs_compressor_write_finish(dcs_s8_t *, dcs_u32_t, amp_request_t *);
 dcs_s32_t get_location_fa(dcs_s8_t *, dcs_s8_t *, dcs_u32_t);
 dcs_s32_t get_location_fq(dcs_s8_t *, dcs_s8_t *, dcs_u32_t, dcs_u64_t, dcs_u32_t);
 dcs_s32_t do_write_map(map<string, string> &, dcs_u32_t);

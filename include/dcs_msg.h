@@ -71,6 +71,7 @@ struct __dcs_s2d_req
     dcs_u32_t scsize;    /*superchunk size*/
     dcs_u64_t offset;
     dcs_u32_t filetype;
+    dcs_u32_t finish;
 };
 typedef struct __dcs_s2d_req dcs_s2d_req_t;
 

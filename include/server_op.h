@@ -30,10 +30,8 @@ dcs_s32_t __dcs_read_finish(dcs_u64_t inode,
                                 dcs_u32_t client_id,
                                 amp_request_t *req);
 /*send finish reply to client*/
-dcs_u32_t __dcs_server_write_finish(dcs_u64_t inode,
-                                        dcs_u64_t timestamp,
-                                        dcs_u32_t clientid,
-                                        dcs_u64_t sizei,
+dcs_u32_t __dcs_server_write_finish(dcs_s8_t *,
+                                    dcs_u32_t,
                                         amp_request_t *req);
 /*collect disk usage info from compressor*/
 dcs_s32_t server_collect_diskinfo(); 

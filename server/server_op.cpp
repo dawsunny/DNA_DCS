@@ -301,7 +301,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     
     if(finish){
         DCS_MSG("__dcs_write_server file %ld write finish \n", fileinode);
-        rc = __dcs_server_write_finish(fileinode, timestamp, fromid, fileoffset, req); 
+        rc = __dcs_server_write_finish(file_md5, target, req);
         goto EXIT;
     }
 
@@ -1141,36 +1141,101 @@ EXIT:
 
 /*when a file is been compressed, write back its mapinfo
  * and send reply msg back*/
-dcs_u32_t __dcs_server_write_finish(dcs_u64_t inode,
-                                        dcs_u64_t timestamp,
-                                        dcs_u32_t clientid,
-                                        dcs_u64_t size,
+dcs_u32_t __dcs_server_write_finish(dcs_s8_t *md5,
+                                    dcs_u32_t target_compressor,
                                         amp_request_t *req)
 {
-    dcs_u32_t rc = 0;
-    dcs_u32_t msg_size = 0;
+    dcs_s32_t rc = 0;
+    dcs_u32_t size = 0;
 
     amp_message_t *repmsgp = NULL;
     dcs_msg_t   *msgp = NULL;
+    
+    //by bxz
+    amp_request_t *req2d = NULL;
+    amp_message_t *reqmsgp2d = NULL;
+    amp_message_t *repmsgp2d = NULL;
 
-    DCS_ERROR("__dcs_server_write_finish enter \n");
+    DCS_ENTER("__dcs_server_write_finish enter \n");
 
     //write back file mapping info
-    //rc = __dcs_server_mapinfo_wb(inode, timestamp, clientid, size);
+    /*
+    rc = __dcs_server_mapinfo_wb(inode, timestamp, clientid, size);
     if(rc != 0){
         DCS_ERROR("__dcs_server_write_finish mapinfo wb err:%d \n", rc);
         goto EXIT;
     }
+     */
+    //send finish msg to compressor
+    rc = __amp_alloc_request(&req2d);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_server_write_finish alloc for req2d error[%d]\n", rc);
+        goto EXIT;
+    }
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    reqmsgp2d = (amp_message_t *)malloc(size);
+    if (reqmsgp2d == NULL) {
+        DCS_ERROR("__dcs_server_write_finish malloc for reqmsgp2d error[%d]", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(reqmsgp2d, 0, size);
+    msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp2d + AMP_MESSAGE_HEADER_LEN);
+    msgp->size = size;
+    msgp->optype = DCS_WRITE;
+    msgp->msg_type = is_req;
+    msgp->fromtype = DCS_SERVER;
+    msgp->fromid = server_this_id;
+    memcpy(msgp->md5, md5, MD5_STR_LEN + 1);
+    msgp->u.s2d_req.finish = 1;
+    
+    req2d->req_iov = NULL;
+    req2d->req_niov = 0;
+    req2d->req_msg = reqmsgp2d;
+    req2d->req_msglen = size;
+    req2d->req_need_ack = 1;
+    req2d->req_resent = 1;
+    req2d->req_type = AMP_REQUEST | AMP_MSG;
+    
+    rc = amp_send_sync(server_comp_context,
+                       req2d,
+                       DCS_NODE,
+                       target_compressor,
+                       0);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_server_write_finish send req to compressor error[%d]\n", rc);
+        goto EXIT;
+    }
+    
+    //get the reply from compressor
+    repmsgp2d = req2d->req_reply;
+    if (repmsgp2d == NULL) {
+        DCS_ERROR("__dcs_server_write_finish cannot recieve the reply from compressor\n");
+        rc = -1;
+        goto EXIT;
+    }
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp2d + AMP_MESSAGE_HEADER_LEN);
+    if (msgp->ack == 0) {
+        DCS_ERROR("__dcs_server_write_finish compressor fail to store the map info\n");
+        rc = -1;
+        goto EXIT;
+    }
+    if (req2d->req_iov) {
+        free(req2d->req_iov);
+        req2d->req_iov = NULL;
+        req2d->req_niov = 0;
+    }
+    amp_free(repmsgp2d, req2d->req_replylen);
 
     //send finish reply to client
-    msg_size = sizeof(dcs_msg_t) + AMP_MESSAGE_HEADER_LEN;
-    repmsgp = (amp_message_t *)malloc(msg_size);
+    size = sizeof(dcs_msg_t) + AMP_MESSAGE_HEADER_LEN;
+    repmsgp = (amp_message_t *)malloc(size);
     if(repmsgp == NULL){
         DCS_ERROR("__dcs_server_write_finish malloc for repmsgp err:%d \n",errno);
         rc = errno;
         goto EXIT;
     }
-    memset(repmsgp, 0, msg_size);
+    memset(repmsgp, 0, size);
     memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
 
     msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
@@ -1181,7 +1246,7 @@ dcs_u32_t __dcs_server_write_finish(dcs_u64_t inode,
     req->req_niov = 0;
 
     req->req_reply = repmsgp;
-    req->req_replylen = msg_size;
+    req->req_replylen = size;
     req->req_need_ack = 0;
     req->req_resent = 0;
     req->req_type = AMP_REPLY | AMP_MSG;
@@ -1198,6 +1263,13 @@ dcs_u32_t __dcs_server_write_finish(dcs_u64_t inode,
     }
 
 EXIT:
+    if (reqmsgp2d) {
+        free(reqmsgp2d);
+        reqmsgp2d = NULL;
+    }
+    if (req2d) {
+        __amp_free_request(req2d);
+    }
 
     if(repmsgp != NULL){
         free(repmsgp);
@@ -1765,7 +1837,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     msgp->size = size;
     msgp->optype = DCS_READ;
     msgp->msg_type = is_req;
-    msgp->fromid = DCS_SERVER;
+    msgp->fromtype = DCS_SERVER;
     msgp->fromid = server_this_id;
     memcpy(msgp->md5, file_md5, MD5_STR_LEN + 1);
     msgp->u.s2d_req.offset = fileoffset;

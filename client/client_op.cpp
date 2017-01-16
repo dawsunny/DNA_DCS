@@ -657,6 +657,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
             memcpy(c2s_datainfo.filename, filename1, strlen(filename1));
             c2s_datainfo.offset = filesize;
+            c2s_datainfo.target_server = target_server;
             rc = __dcs_clt_finish_msg(filesize, file_md5, c2s_datainfo, threadp);
             if(rc != 0){
                 DCS_ERROR("send finish massage error: %d \n", rc);
@@ -935,6 +936,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
             memcpy(c2s_datainfo.filename, filename1, strlen(filename1));
             c2s_datainfo.offset = filesize;
+            c2s_datainfo.target_server = target_server;
             rc = __dcs_clt_finish_msg(filesize, file_md5, c2s_datainfo, threadp);
             if(rc != 0){
                 DCS_ERROR("send finish massage error: %d \n", rc);
@@ -1253,9 +1255,10 @@ dcs_s32_t __dcs_clt_finish_msg(dcs_u64_t filesize,
     req->req_type = AMP_REQUEST | AMP_MSG;
 
 //SEND_AGAIN:
-    server_id = c2s_datainfo.inode % DCS_SERVER_NUM;
-    if(server_id == 0)
-        server_id = DCS_SERVER_NUM;
+    //server_id = c2s_datainfo.inode % DCS_SERVER_NUM;
+    //if(server_id == 0)
+    //    server_id = DCS_SERVER_NUM;
+    server_id = c2s_datainfo.target_server;
 
     rc = amp_send_sync(clt_comp_context, 
                         req, 
