@@ -42,13 +42,28 @@ struct list_head request_queue;
 dcs_s32_t __dcs_server_parse_paramatter(dcs_s32_t argc, dcs_s8_t **argv)
 {
     dcs_u32_t daemonlize;
-    dcs_s8_t c;
+    //dcs_s8_t c;
     dcs_s32_t rc = 0;
 
-    daemonlize = 1;
+    daemonlize = 0;
+    
+    server_chunk_type = 0;
+    server_chunk_size = 8192;
+    server_rout_type = 1;
 
     DCS_ENTER("__dcs_server_parse_paramatter enter \n");
+    
+    if (argc != 3 || strcmp(argv[1], "-f") != 0) {
+        printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
+        printf("Usage:\n\t %s -f id \n", argv[0]);
+        printf("\t-f id\t----\tthe id of this server \n");
+        printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
+        rc = -1;
+        goto EXIT;
+    }
+    server_this_id = atoi(argv[argc -1]);
 
+    /*
     if(argc < 9){
     __error_paramatter:
         printf("Usage:\t %s [-c] chunktype [-s] chunksize [-t] routingtype [-d | -f] id \n", argv[0]);
@@ -63,7 +78,6 @@ dcs_s32_t __dcs_server_parse_paramatter(dcs_s32_t argc, dcs_s8_t **argv)
         goto EXIT;
     }
 
-    server_this_id = atoi(argv[argc -1]);
 
     while ((c = getopt(argc, argv, "c:s:t:bf")) != EOF){
         switch(c){
@@ -115,6 +129,7 @@ dcs_s32_t __dcs_server_parse_paramatter(dcs_s32_t argc, dcs_s8_t **argv)
         __dcs_daemonlize();
     }
 
+     */
 
 EXIT:
     DCS_LEAVE("__dcs_server_parse_paramatter leave \n");

@@ -30,9 +30,49 @@ dcs_u32_t         server_num = DCS_SERVER_NUM;
 dcs_u32_t         clt_optype;
 //dcs_u32_t         server_id;
 dcs_s8_t          *clt_pathname = NULL;
+dcs_s8_t           *file_tobe_stored = NULL;
 
 //add by bxz
 dcs_u32_t       clt_filetype;
+
+void print_usage(char op, char *proc) {
+    printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
+    switch (op) {
+        case 'a':
+            printf("Usage:\n\t%s [w | r | l | d] ...\n", proc);
+            printf("\tw: compress file\n");
+            printf("\tr: decompress file\n");
+            printf("\tl: list the compressed files\n");
+            printf("\td: delete the compressed file\n");
+            break;
+            
+        case 'w':
+            printf("Usage:\n\t%s w file -t type -f id\n", proc);
+            printf("\t-t type\t----\ta: FASTA file; q: FASTQ file\n");
+            printf("\t-f id\t----\tthe id of this mos\n");
+            break;
+            
+        case 'r':
+            printf("Usage:\n\t%s r file path -f id\n", proc);
+            printf("\tpath\t----\tthe location of the file to be written\n");
+            printf("\t-f id\t----\tthe id of this mos\n");
+            break;
+            
+        case 'l':
+            printf("Usage:\n\t%s l -f id\n", proc);
+            printf("\t-f id\t----\tthe id of this mos\n");
+            break;
+            
+        case 'd':
+            printf("Usage:\n\t%s d file -f id\n", proc);
+            printf("\t-f id\t----\tthe id of this mos\n");
+            break;
+            
+        default:
+            break;
+    }
+    printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");
+}
 
 /* client parse paramatter */
 dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
@@ -41,35 +81,87 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
     dcs_s8_t  c;
     dcs_s32_t rc = 0;
 
-    daemonlize = 1;
+    daemonlize = 0;
+    
+    char op = 0;
 
     DCS_ENTER("__dcs_clt_parse_paramatter enter \n");
     
-    if(argc < 7){
-    __error_paramatter:
-        printf("Usage:\t %s  [-w | -r | -d | -l | -D] path [-t] type [-b | -f]  id\n", argv[0]);
-        printf("\t-l path ---- list files of pathname\n");
-        printf("\t-d path ---- delete file\n");
-        printf("\t-D path ---- delele dir\n");
-        printf("\t-w path ---- write file|dir\n");
-        printf("\t-r path ---- read file|dir\n");
-        //add by bxz
-        printf("\t-t type ---- a: FASTA file; q: FASTQ file\n");
-        
-        printf("\t-b ---- running on background, it's default option\n");
-        printf("\t-f ---- running on foreground\n");
-        printf("\tid ---- the id of this mos\n");
+    if (argc < 2) {
+        print_usage('a', argv[0]);
         rc = -1;
         goto EXIT;
-        //exit(1);
+    }
+    
+    if (strlen(argv[1]) != 1) {
+        print_usage('a', argv[0]);
+        rc = -1;
+        goto EXIT;
+    }
+    
+    op = argv[1][0];
+    switch (op) {
+        case 'w':
+            if (argc != 7 || strcmp(argv[3], "-t") != 0 || strcmp(argv[argc - 2], "-f") != 0 ||
+                (strcmp(argv[4], "a") != 0 && strcmp(argv[4], "q") != 0)) {
+                print_usage('w', argv[0]);
+                rc = -1;
+                goto EXIT;
+            }
+            clt_optype = DCS_WRITE;
+            clt_pathname = argv[2];
+            if (strcmp(argv[4], "a") == 0) {
+                clt_filetype = DCS_FILETYPE_FASTA;
+            } else {
+                clt_filetype = DCS_FILETYPE_FASTQ;
+            }
+            break;
+            
+        case 'r':
+            if (argc != 6 || strcmp(argv[argc - 2], "-f") != 0) {
+                print_usage('r', argv[0]);
+                rc = -1;
+                goto EXIT;
+            }
+            clt_optype = DCS_READ;
+            clt_pathname = argv[2];
+            file_tobe_stored = argv[3];
+            break;
+        case 'l':
+            if (argc != 4 || strcmp(argv[argc - 2], "-f") != 0) {
+                print_usage('l', argv[0]);
+                rc = -1;
+                goto EXIT;
+            }
+            clt_optype = DCS_LIST;
+            break;
+        case 'd':
+            if (argc != 5 || strcmp(argv[argc - 2], "-f") != 0) {
+                print_usage('d', argv[0]);
+                rc = -1;
+                goto EXIT;
+            }
+            clt_optype = DCS_DELETE;
+            clt_pathname = argv[2];
+            break;
+            
+        default:
+            print_usage('a', argv[0]);
+            rc = -1;
+            goto EXIT;
+            break;
     }
 
     clt_this_id = atoi(argv[argc-1]);
+    printf("file: %s\npath: %s\noptype: %d\nfiletype: %d\nid: %d\n", clt_pathname, file_tobe_stored, clt_optype, clt_filetype, clt_this_id);
 
+    /*
     while((c = getopt(argc, argv, "w:r:l:d:D:t:bf")) != EOF){
         switch(c){
             case '?':
-                goto __error_paramatter;
+                print_usage('a', argv[0]);
+                rc = -1;
+                goto EXIT;
                 break;
             case 'w':
                 clt_optype = DCS_WRITE;
@@ -100,7 +192,9 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
                     clt_filetype = DCS_FILETYPE_FASTQ;
                 } else {
                     DCS_ERROR("__dcs_clt_parse_paramatter wrong file type!\n");
-                    goto __error_paramatter;
+                    print_usage('a', argv[0]);
+                    rc = -1;
+                    goto EXIT;
                 }
                 break;
             case 'b':
@@ -119,11 +213,6 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
 
     if(daemonlize){
         //__dcs_daemonlize();
-    }
-
-    /*
-    if(clt_optype == DCS_READ){
-        rc = __dcs_read_file(pathname);
     }
     */
 

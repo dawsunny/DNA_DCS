@@ -11,7 +11,7 @@
 #include "dc_const.h"
 #include "dc_debug.h"
 
-#include "dc_c_global.h"   
+#include "dc_global.h"   
 #include "dc_c_alignment.h"   //call compress_input_file
 #include "dc_c_thread.h"
 

@@ -9,10 +9,10 @@
 #include "dc_type.h"
 #include "dc_debug.h"
 
-#include "dc_c_io.h"
+#include "dc_io.h"
 #include "dc_c_thread.h"
 
-#include <dc_c_global.h>
+#include <dc_global.h>
 #include <dcs_const.h>
 #include "dc_c_alignment.h"
 

@@ -3,7 +3,7 @@
 
 #include "dc_type.h"
 
-#include "dc_c_io.h"
+#include "dc_io.h"
 
 dc_s32_t
 make_dstr(dc_s8_t *dstr, dc_s8_t *aligned_seqs[]);

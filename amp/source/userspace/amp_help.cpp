@@ -13,7 +13,7 @@
 
 //amp_u64_t  amp_debug_mask = AMP_DEBUG_ERROR | AMP_DEBUG_WARNING |AMP_DEBUG_ENTRY | AMP_DEBUG_LEAVE | AMP_DEBUG_MSG;
 //amp_u64_t  amp_debug_mask = AMP_DEBUG_ERROR | AMP_DEBUG_WARNING |AMP_DEBUG_ENTRY | AMP_DEBUG_LEAVE;
-amp_u64_t  amp_debug_mask = AMP_DEBUG_ERROR;// | AMP_DEBUG_WARNING;
+amp_u64_t  amp_debug_mask = AMP_DEBUG_ERROR | AMP_DEBUG_WARNING;
 //amp_u64_t  amp_debug_mask = 0;
 
 /*

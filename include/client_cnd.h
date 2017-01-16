@@ -9,6 +9,7 @@ extern dcs_u32_t   clt_num;
 extern dcs_u32_t   clt_optype;
 //extern dcs_u32_t   server_id;
 extern dcs_s8_t    *clt_pathname;
+extern dcs_s8_t    *file_tobe_stored;
 
 //add by bxz
 extern dcs_u32_t clt_filetype;

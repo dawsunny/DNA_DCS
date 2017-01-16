@@ -9,8 +9,10 @@
 #include "dc_type.h"
 #include "dc_debug.h"
 
-#include "dc_d_io.h"
+#include "dc_io.h"
+#include "dc_global.h"
 #include "dc_d_decompress.h"
+#include "dcs_const.h"
 
 void
 print_time(const char *explain, struct timeval start_time, struct timeval end_time)
@@ -25,7 +27,7 @@ print_time(const char *explain, struct timeval start_time, struct timeval end_ti
 }
 
 dc_s32_t
-dc_d_main( dc_s32_t argc, dc_s8_t *argv[] )
+dc_d_main(dc_s8_t *input, dc_s8_t *output, dc_u32_t datasize)
 {
 	dc_s32_t rc = 0;
     struct timeval start_time, end_time;
@@ -36,7 +38,7 @@ dc_d_main( dc_s32_t argc, dc_s8_t *argv[] )
     printf("Decompression begin, please wait...\n");
     fflush(stdout);
 
-	rc = dc_d_check_arg( argc, argv );
+	rc = dc_d_check_arg(input);
 	if( rc )
 	{
 		DC_ERROR("error: dc_d_check_arg return error\n");
@@ -44,7 +46,7 @@ dc_d_main( dc_s32_t argc, dc_s8_t *argv[] )
 	}
 
     gettimeofday( &start_time, NULL );
-	rc = dc_d_read_ref_file( argv[argc - 2] );     //read reference sequences from file
+	rc = dc_d_read_ref_file(FASTA_REF_PATH);     //read reference sequences from file
 	if( rc )
 	{
 		DC_ERROR("error: dc_d_read_ref_file return error\n");
@@ -55,7 +57,7 @@ dc_d_main( dc_s32_t argc, dc_s8_t *argv[] )
 
 
     gettimeofday( &start_time, NULL );
-	rc = analyze_path( argv[argc - 1] );   //analyze input path: dir or path
+	rc = analyze_path(input, output);   //analyze input path: dir or path
 	if( rc )
 	{
 		DC_ERROR("error: analyze_path return error\n");

@@ -16,9 +16,9 @@
 #include "dc_const.h"
 #include "dc_debug.h"
 
-#include "dc_d_global.h"
+#include "dc_global.h"
 #include "dc_d_decode.h"
-#include "dc_d_io.h"
+#include "dc_io.h"
 #include "dc_d_decompress.h"
 
 #include <string>
@@ -97,12 +97,13 @@ make_orig_seq(const dc_s8_t *s0, dc_s32_t len0, dc_s8_t *dstr, dc_s32_t dstr_len
 
 //decompress from cfile_name into output_name
 dc_s32_t
-decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
+decompress_file(const dc_s8_t *cfile_name, dc_s8_t *output)
 {
     dc_s32_t rc = 0;
     DC_PRINT("decompress_file enter:\n");
+    printf("input: %s\noutput: %s\n", cfile_name, output);
 
-    FILE *fin = NULL, *fin_n = NULL, *fin_r = NULL, *fout = NULL;
+    FILE *fin = NULL, *fin_n = NULL, *fin_r = NULL;// *fout = NULL;
     dc_link_t link_info;
 
     dc_s8_t *read_buf = NULL, write_buf[LINE_LEN + 2], head_line[LINE_BUF_LEN];
@@ -113,6 +114,7 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
 	dc_s32_t inp_seq_len, ref_seq_len, dstr_len, encode_len;
 	dc_s8_t *dstr = NULL;
     dc_u8_t *dstr_encode = NULL;
+    dc_u32_t output_offset = 0;
 
     vector<string> inp_seqs;
     vector<dc_u32_t> n_locs;
@@ -133,12 +135,14 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
     }
 
     //open
-    if( (fout = fopen(output_name, "w")) == NULL ) 
+    /*
+    if( (fout = fopen(output, "w")) == NULL ) 
 	{
         DC_ERROR("error: decompress_file: open output file error\n");
         rc = -1;
         goto EXIT;
     }
+     */
     if( (fin = fopen(cfile_name, "rb")) == NULL ) 
     {
         DC_ERROR("error: decompress_file: open compressed_file error\n");
@@ -163,7 +167,9 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
     fread(head_line, sizeof(dc_s8_t), head_line_len, fin);
     head_line[head_line_len]     = '\n';
     head_line[head_line_len + 1] = '\0';
-    fputs(head_line, fout);
+    //fputs(head_line, fout);
+    memcpy(output + output_offset, head_line, strlen(head_line));
+    output_offset += strlen(head_line);
 
     write_buf[LINE_LEN] = '\n', write_buf[LINE_LEN + 1] = '\0';
     while( fread(&link_info, sizeof(dc_link_t), 1, fin) == 1 )   //1st, read a link struct
@@ -250,7 +256,7 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
         inp_seqs[seq_no].insert(inp_seqs[seq_no].begin() + base_no, nCnt, 'N');
     }
 
-    write_to_file(inp_seqs, fout);
+    write_to_file(inp_seqs, output, output_offset);
 
     if( fin_r != NULL )
     {
@@ -261,17 +267,17 @@ decompress_file(const dc_s8_t *cfile_name, const dc_s8_t *output_name)
         {
             fread(&c, sizeof(char), 1, fin_r);
 
-            fseek(fout, base_pos, SEEK_SET);
-            fputc(c, fout);
+            //fseek(fout, base_pos, SEEK_SET);
+            //fputc(c, fout);
         }
     }
 
 EXIT:
-    if( fout != NULL )
-    {
-        fclose(fout);
-        fout = NULL;
-    }
+    //if( fout != NULL )
+    //{
+    //    fclose(fout);
+   //     fout = NULL;
+   // }
     if( fin != NULL )
     {
         fclose(fin);
@@ -305,10 +311,11 @@ EXIT:
 
 //check whether the path is a file or dir
 dc_s32_t
-analyze_path(dc_s8_t *input_path)
+analyze_path(dc_s8_t *input_path, dc_s8_t *output)
 {
 	dc_s32_t rc = 0;
 	DC_PRINT("analyze_path enter:\n");
+    printf("get input_path: %s\n", input_path);
 
 	struct stat file_stat;
 	stat(input_path, &file_stat);
@@ -318,20 +325,22 @@ analyze_path(dc_s8_t *input_path)
         /*string cmd("tar -xjf " + string(input_path));*/
         /*system(cmd.c_str());*/
 
+        /*
         dc_s32_t i, path_len, name_len;
 
 		path_len = strlen(input_path);
 		for(i = path_len - 1; i >= 0 && input_path[i] != '/'; --i)
 			;
 		name_len = path_len - 1 - i;
-
+         */
+        
 		/*strncpy( output_name, input_path + i + 1, name_len - 4); //4 -> _out*/
 		/*strncpy( output_name + name_len - 4, "_res", 5);*/
 
-        string output_name(input_path + i + 1, input_path + path_len - 3); //3 -> out
-        output_name += "res";
+        //string output_name(input_path + i + 1, input_path + path_len - 3); //3 -> out
+        //output_name += "res";
 
-        rc = decompress_file(string(input_path).substr(i + 1, name_len).c_str(), output_name.c_str());
+        rc = decompress_file(input_path, output);
         if( rc )
         {
             DC_ERROR("ERROR!: analyze_path: decompress_file return error\n");
@@ -368,7 +377,7 @@ analyze_path(dc_s8_t *input_path)
             string output_name("/tmp/dna_decompress/out/");
             output_name += file_name + '/' + file_no;
 
-            rc = decompress_file((file_path + file_name).c_str(), output_name.c_str());
+            //rc = decompress_file((file_path + file_name).c_str(), output_name.c_str());
             if( rc )
             {
                 DC_ERROR("ERROR!: analyze_path: decompress_file return error\n");

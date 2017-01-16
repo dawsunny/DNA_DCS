@@ -69,6 +69,8 @@ struct __dcs_s2d_req
 {
     dcs_u32_t chunk_num;
     dcs_u32_t scsize;    /*superchunk size*/
+    dcs_u64_t offset;
+    dcs_u32_t filetype;
 };
 typedef struct __dcs_s2d_req dcs_s2d_req_t;
 
@@ -139,6 +141,8 @@ struct __dcs_msg
     dcs_u32_t ack;        /*common ack usual 1 means sucess*/
     dcs_u32_t filetype;  //FASTA(0)/FASTQ(1)   ***by bxz
     dcs_u64_t filesize; //by bxz
+    dcs_u64_t inode;
+    dcs_u64_t timestamp;
     dcs_s8_t md5[33];  //by bxz
     union{
         /*client related*/

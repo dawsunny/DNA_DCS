@@ -8,7 +8,7 @@
 #include "dc_const.h"
 #include "dc_debug.h"
 
-#include "dc_d_io.h"
+#include "dc_io.h"
 
 #include <vector> 
 #include <string>
@@ -43,14 +43,20 @@ dc_d_print_usage()
 
 //check whether the path exsits
 dc_s32_t 
-dc_d_check_arg( dc_s32_t argc, dc_s8_t *argv[] )
+dc_d_check_arg(dc_s8_t *input)
 {
     dc_s32_t rc = 0;
     DC_PRINT("dc_d_check_arg enter:\n");
 
     dc_d_DIF_RATE = 0.01;
     LINE_LEN = 60;
+    if (access(input, 0) != 0) {
+        rc = errno;
+        DC_ERROR("dc_d_check_arg input file error[%d]\n", errno);
+        goto EXIT;
+    }
 
+    /*
     if( argc != 3 && argc != 5 && argc != 7) 
     {   
         DC_ERROR("ERROR!: dc_d_check_arg: input arg error\n");
@@ -91,6 +97,7 @@ dc_d_check_arg( dc_s32_t argc, dc_s8_t *argv[] )
                 break;
         }
     }
+     */
 
     dc_d_OVERLAP = REF_CHUNK + (int)(INPUT_CHUNK * dc_d_DIF_RATE);
 
@@ -225,7 +232,7 @@ EXIT:
 }
 
 void
-write_to_file(vector<string> &inp_seqs, FILE *fout)
+write_to_file(vector<string> &inp_seqs, dc_s8_t *output, dc_u32_t output_offset)
 {
     dc_s8_t write_buf[LINE_LEN + 2];
     write_buf[LINE_LEN] = '\n';
@@ -240,7 +247,9 @@ write_to_file(vector<string> &inp_seqs, FILE *fout)
         while( idx + LINE_LEN <= (dc_s32_t)inp_seqs[i].size() )
         {
             strncpy(write_buf, inp_seqs[i].c_str() + idx, LINE_LEN);
-            fputs(write_buf, fout);
+            //fputs(write_buf, fout);
+            memcpy(output + output_offset, write_buf, strlen(write_buf));
+            output_offset += strlen(write_buf);
             idx += LINE_LEN;
         }
 
@@ -252,7 +261,9 @@ write_to_file(vector<string> &inp_seqs, FILE *fout)
     while( idx + LINE_LEN <= (dc_s32_t)inp_seqs[i].size() )
     {
         strncpy(write_buf, inp_seqs[i].c_str() + idx, LINE_LEN);
-        fputs(write_buf, fout);
+        //fputs(write_buf, fout);
+        memcpy(output + output_offset, write_buf, strlen(write_buf));
+        output_offset += strlen(write_buf);
         idx += LINE_LEN;
     }
 
@@ -262,7 +273,9 @@ write_to_file(vector<string> &inp_seqs, FILE *fout)
         strncpy(write_buf, inp_seqs[i].c_str() + idx, tmp_len);
         write_buf[tmp_len] = '\n';
         write_buf[tmp_len + 1] = '\0';
-        fputs(write_buf, fout);
+        //fputs(write_buf, fout);
+        memcpy(output + output_offset, write_buf, strlen(write_buf));
+        output_offset += strlen(write_buf);
     }
 }
 

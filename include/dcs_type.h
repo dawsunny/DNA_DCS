@@ -5,6 +5,9 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <map>
+#include <string>
+using namespace std;
 
 typedef unsigned char      dcs_u8_t;
 typedef char               dcs_s8_t;
@@ -21,9 +24,19 @@ struct _server_hash
     dcs_u32_t filetype;
     dcs_u64_t filesize;
     dcs_u32_t compressor_id;
+    dcs_u64_t inode;
+    dcs_u64_t timestamp;
     dcs_s8_t md5[33];
 };
 typedef struct _server_hash server_hash_t;
+
+struct _compressor_hash
+{
+    dcs_u32_t chunk_num;
+    string location;    
+    map<dcs_u64_t, string> off_loc;
+};
+typedef struct _compressor_hash compressor_hash_t;
 
 struct __dcs_thread
 {

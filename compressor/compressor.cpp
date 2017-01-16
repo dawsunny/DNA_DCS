@@ -34,8 +34,8 @@
 #include <string.h>
 #include <semaphore.h>
 
-#include "dc_c_global.h"
-#include "dc_c_io.h"
+#include "dc_global.h"
+#include "dc_io.h"
 
 
 dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
@@ -127,8 +127,8 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
         printf("no FASTA map info.\n");
     } else {
         pthread_mutex_lock(&compressor_location_fa_lock);
-        do_read_map(compressor_location_fa, DCS_FILETYPE_FASTA);
-        compressor_location_fa_cnt = compressor_location_fa.size();
+        //do_read_map(compressor_location_fa, DCS_FILETYPE_FASTA);
+        //compressor_location_fa_cnt = compressor_location_fa.size();
         pthread_mutex_unlock(&compressor_location_fa_lock);
     }
     printf("Read FASTQ map info, please wait...\n");
@@ -136,18 +136,18 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
         printf("no FASTQ map info.\n");
     } else {
         pthread_mutex_lock(&compressor_location_fq_lock);
-        do_read_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
-        compressor_location_fq_cnt = compressor_location_fq.size();
-        compressor_location_fq_cnt_local = 0;
+        //do_read_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
+       // compressor_location_fq_cnt = compressor_location_fq.size();
+       // compressor_location_fq_cnt_local = 0;
         pthread_mutex_unlock(&compressor_location_fq_lock);
     }
-    printf("Ready.\n");
     rc = __dcs_create_compressor_thread();
     if(rc != 0){
         DCS_ERROR("main __dcs_create_compressor_thread \n");
         goto EXIT;
     }
-
+    printf("Ready.\n");
+    
     while(1){
         sleep(30);
     }

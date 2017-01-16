@@ -10,7 +10,7 @@
 #include "dc_debug.h"
 
 #include "dc_c_encode.h"
-#include "dc_c_io.h"
+#include "dc_io.h"
 
 //global variables
 dc_s8_t  **dc_c_ref_seqs_g;

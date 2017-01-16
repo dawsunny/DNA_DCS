@@ -12,7 +12,10 @@ struct dcs_clt_file{
     dcs_u32_t target_server;
     dcs_u64_t filesize;
     dcs_u32_t filetype;
+    dcs_u64_t inode;
+    dcs_u64_t timestamp;
     dcs_s8_t filename[256];
+    dcs_s8_t file_tobe_stored[256];
     struct list_head file_list;
 };
 typedef struct dcs_clt_file dcs_clt_file_t;

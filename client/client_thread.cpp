@@ -129,10 +129,10 @@ void *__dcs_read_thread(void *argv)
         list_del(&tmp->file_list);
         pthread_mutex_unlock(&clt_read_lock);
 
-        DCS_MSG("__dcs_read_thread filename: %s to be write \n", tmp->filename);
-        rc = __dcs_clt_read_file(tmp->filename, threadp);
+        DCS_MSG("__dcs_read_thread filename: %s to be read \n", tmp->filename);
+        rc = __dcs_clt_read_file(tmp, threadp);
         if(rc != 0){
-            DCS_ERROR("__dcs_read_thread thread:%d fail to process write file \n",threadp->seqno);
+            DCS_ERROR("__dcs_read_thread thread:%d fail to process read file \n",threadp->seqno);
             goto EXIT;
         }
 

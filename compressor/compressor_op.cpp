@@ -38,17 +38,17 @@
 #include <sstream>
 #include <string>
 #include <iostream>
-#include "dc_c_global.h"
+#include "dc_global.h"
 #include "ds_dsrc.h"
 using namespace std;
 
 pthread_mutex_t compressor_location_fa_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t compressor_location_fq_lock = PTHREAD_MUTEX_INITIALIZER;
-map<string, string> compressor_location_fa;
-map<string, string> compressor_location_fq;
+map<string, compressor_hash_t> compressor_location_fa;
+map<string, compressor_hash_t> compressor_location_fq;
 dcs_u32_t compressor_location_fa_cnt = 0;
 dcs_u32_t compressor_location_fq_cnt = 0;
-dcs_u32_t compressor_location_fq_cnt_local = 0;
+//dcs_u32_t compressor_location_fq_cnt_local = 0;
 
 //by bxz
 dcs_s32_t do_write_map(map<string, string> &compressor_location, dcs_u32_t filetype) {
@@ -188,12 +188,13 @@ EXIT:
     return rc;
 }
 
-dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
+dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_s8_t *md5, dcs_u32_t optype) {
     dcs_s32_t rc = 0;
     dcs_s32_t fd = 0;
     memset(res, 0, PATH_LEN);
     memcpy(res, FASTA_CONTAINER_PATH, strlen(FASTA_CONTAINER_PATH));
     res[strlen(res)] = '/';
+    string file_md5 = md5;
     if (optype == DCS_WRITE) {
         string strstr = "";
         stringstream is;
@@ -211,8 +212,7 @@ dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype) {
             swap(strstr[i], strstr[j]);
         }
         compressor_location_fa_cnt++;
-        string shatmptmp = (dcs_s8_t *)sha;
-        compressor_location_fa[shatmptmp] = strstr;
+        compressor_location_fa[file_md5].location = strstr;
         //do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
         pthread_mutex_unlock(&compressor_location_fa_lock);
         
@@ -251,12 +251,13 @@ EXIT:
     return rc;
 }
 
-dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u32_t finish) {
+dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_s8_t *md5, dcs_u32_t optype, dcs_u64_t offset, dcs_u32_t finish) {
     dcs_s32_t rc = 0;
     dcs_s32_t fd = 0;
     memset(res, 0, PATH_LEN);
     memcpy(res, FASTQ_CONTAINER_PATH, strlen(FASTQ_CONTAINER_PATH));
     res[strlen(res)] = '/';
+    string file_md5 = md5;
     if (optype == DCS_WRITE) {
         string strstr = "";
         stringstream is;
@@ -274,8 +275,7 @@ dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u3
             swap(strstr[i], strstr[j]);
         }
         //compressor_location_cnt_fq++;
-        string shatmptmp = (dcs_s8_t *)sha;
-        compressor_location_fq[shatmptmp] = strstr;
+        compressor_location_fq[file_md5].location = strstr;
         //do_write_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
         pthread_mutex_unlock(&compressor_location_fq_lock);
         
@@ -291,7 +291,7 @@ dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u3
         is.clear();
         strstr = "";
         pthread_mutex_lock(&compressor_location_fq_lock);
-        is << compressor_location_fq_cnt_local;
+        is << compressor_location_fq[file_md5].chunk_num;
         is >> strstr;
         for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
             swap(strstr[i], strstr[j]);
@@ -302,13 +302,15 @@ dcs_s32_t get_location_fq(dcs_s8_t *res, dcs_u8_t *sha, dcs_u32_t optype, dcs_u3
         for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
             swap(strstr[i], strstr[j]);
         }
-        compressor_location_fq_cnt_local++;
+        compressor_location_fq[file_md5].chunk_num++;
         if (finish) {
-            compressor_location_fq_cnt_local = 0;
+            //compressor_location_fq_cnt_local = 0;
             compressor_location_fq_cnt++;
         }
-        pthread_mutex_unlock(&compressor_location_fq_lock);
         sprintf(res, "%s/%s", res, strstr.c_str());
+        strstr = res;
+        compressor_location_fq[file_md5].off_loc[offset] = strstr;
+        pthread_mutex_unlock(&compressor_location_fq_lock);
         if (access(res, 0) == 0) {
             DCS_ERROR("get_location_fq file [%s] already exists!\n", res);
             rc = -1;
@@ -804,7 +806,11 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     FILE *filep = NULL; //bxz
     static int seqno = 0;
     char *input_name = NULL, *output_name = NULL;
-    map<string, string>::iterator it;
+    dcs_s8_t file_md5_tmp[MD5_STR_LEN + 1];
+    dcs_u64_t offset;
+    string file_md5;
+    map<string, compressor_hash_t>::iterator it;
+    map<dcs_u64_t, string>::iterator it1;
 
     DCS_ENTER("__dcs_compressor_write enter \n");
 
@@ -813,6 +819,11 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     filetype = msgp->filetype;      //by bxz
     chunk_num = msgp->u.s2d_req.chunk_num;
     datasize = msgp->u.s2d_req.scsize;
+    offset = msgp->u.s2d_req.offset;
+    memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);   //bxz
+    file_md5 = file_md5_tmp;
+    printf("md5: %s\n", file_md5_tmp);
+    compressor_hash_t hash_tmp;
 
     /*verification weather the data recieved is correct*/
     if(req->req_iov->ak_len != (chunk_num*sizeof(sha_array_t)) + datasize){
@@ -867,12 +878,31 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     memset(input_name, 0, PATH_LEN);
     memset(output_name, 0, PATH_LEN);
     if (filetype == DCS_FILETYPE_FASTA) {
-        rc = get_location_fa(output_name, chunk_info->sha, DCS_WRITE);
+        //rc = get_location_fa(output_name, chunk_info->sha, DCS_WRITE);
+        rc = get_location_fa(output_name, file_md5_tmp, DCS_WRITE);
         if (rc != 0) {
             DCS_ERROR("__dcs_compressor_write get_location_fa error\n");
             goto EXIT;
         }
-        dc_c_main(datap, datasize, output_name);
+        rc = dc_c_main(datap, datasize, output_name);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_compressor_write write fasta data error\n");
+            goto EXIT;
+        } else {
+            pthread_mutex_lock(&compressor_location_fa_lock);
+            hash_tmp.chunk_num = 1;
+            hash_tmp.location = output_name;
+            hash_tmp.off_loc[0] = output_name;
+            compressor_location_fa[file_md5] = hash_tmp;
+            //cout << compressor_location_fa[file_md5].off_loc[0] << endl;
+            for(it = compressor_location_fa.begin(); it != compressor_location_fa.end(); ++it) {
+                cout << it->first << endl;
+                for(it1 = it->second.off_loc.begin(); it1 != it->second.off_loc.end(); it1++) {
+                    cout << it1->first << "\t" << it1->second << endl;
+                }
+            }
+            pthread_mutex_unlock(&compressor_location_fa_lock);
+        }
     } else if (filetype == DCS_FILETYPE_FASTQ) {
         //sprintf(input_name, "./input.fq_%d", seqno);
         //sprintf(output_name, "./output.ds_%d", seqno);
@@ -881,7 +911,8 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
         //filep = fopen(input_name, "w+");
         //fwrite(datap, 1, datasize, filep);
         //fclose(filep);
-        rc = get_location_fq(output_name, chunk_info->sha, DCS_WRITE, 0);
+        //rc = get_location_fq(output_name, chunk_info->sha, DCS_WRITE, 0);
+        rc = get_location_fq(output_name, file_md5_tmp, DCS_WRITE, offset, 0);
         if (rc != 0) {
             DCS_ERROR("__dcs_compressor_write get_location_fq error\n");
             goto EXIT;
@@ -1068,10 +1099,142 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
     dcs_msg_t     *msgp = NULL;
     amp_message_t   *repmsgp = NULL;
     //amp_message_t   *reqmsgp = NULL;
+    
+    dcs_s8_t file_md5_tmp[MD5_STR_LEN + 1];
+    string file_md5;
+    dcs_u64_t offset;
+    dcs_u32_t filetype;
+    dcs_s8_t input_path[PATH_LEN];
+    dcs_s8_t query_result = 0;
 
     DCS_ENTER("__dcs_compressor_read enter \n");
     
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
+    memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);
+    offset = msgp->u.s2d_req.offset;
+    filetype = msgp->u.s2d_req.filetype;
+    printf("|||||get read request:\nmd5:%s\noffset:%u\nfiletype:%u\n", file_md5_tmp, offset, filetype);
+    file_md5 = file_md5_tmp;
+    
+    if (filetype == DCS_FILETYPE_FASTA) {
+        printf("||||reading fasta data...\n");
+        pthread_mutex_lock(&compressor_location_fa_lock);
+        if (compressor_location_fa.find(file_md5) != compressor_location_fa.end()) {
+            printf("find!\n");
+            if (compressor_location_fa[file_md5].off_loc.find(offset) != compressor_location_fa[file_md5].off_loc.end()) {
+                query_result = 1;
+                cout << compressor_location_fa[file_md5].off_loc[offset] << endl;
+            } else {
+                printf("no path\n");
+            }
+        } else {
+            printf("not find!\n");
+        }
+        pthread_mutex_unlock(&compressor_location_fa_lock);
+        memcpy(input_path, compressor_location_fa[file_md5].off_loc[offset].c_str(), compressor_location_fa[file_md5].off_loc[offset].size());
+        data = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
+        if (data == NULL) {
+            DCS_ERROR("__dcs_compressor_read malloc for data fa error[%d]\n", errno);
+            rc = errno;
+            goto EXIT;
+        }
+        memset(data, 0, FA_CHUNK_SIZE);
+        dc_d_main(input_path, data, 0);
+        datasize = strlen(data);
+        printf("data:\n%s[%d]\n", data, datasize);
+    } else if (filetype == DCS_FILETYPE_FASTQ) {
+        printf("||||reading fastq data...\n");
+    } else {
+        DCS_ERROR("__dcs_compressor_read file type error[%d]\n", filetype);
+        rc = -1;
+        goto EXIT;
+    }
+    
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    repmsgp = (amp_message_t *)malloc(size);
+    if (repmsgp == NULL) {
+        DCS_ERROR("__dcs_compressor_read malloc for repmsgp error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(repmsgp, 0, size);
+    memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    
+    if (req->req_msg != NULL) {
+        free(req->req_msg);
+        req->req_msg = NULL;
+    }
+     
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->size = size;
+    if (query_result == 1) {
+        msgp->ack = 1;
+    } else {
+        msgp->ack = 0;
+    }
+    msgp->fromtype = DCS_NODE;
+    msgp->fromid = compressor_this_id;
+    msgp->u.d2s_reply.bufsize = datasize;
+
+    
+    
+    if (query_result == 1) {
+        req->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
+        if (req->req_iov == NULL) {
+            DCS_ERROR("__dcs_compressor_read malloc for reply iov error[%d]\n", errno);
+            rc = errno;
+            goto EXIT;
+        }
+        req->req_iov->ak_addr = data;
+        req->req_iov->ak_len = datasize;
+        req->req_iov->ak_flag = 0;
+        req->req_iov->ak_offset = 0;
+        req->req_niov = 1;
+        
+        
+        req->req_type = AMP_REPLY | AMP_DATA;
+    } else {
+        req->req_iov = NULL;
+        req->req_niov = 0;
+        req->req_type = AMP_REPLY | AMP_MSG;
+    }
+    req->req_reply = repmsgp;
+    req->req_replylen = size;
+    req->req_need_ack = 0;
+    req->req_resent = 0;
+    
+    rc = amp_send_sync(compressor_comp_context,
+                       req,
+                       req->req_remote_type,
+                       req->req_remote_id,
+                       0);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_compressor_read send reply data to server error[%d]\n", rc);
+        goto EXIT;
+    }
+    
+EXIT:
+    if(req->req_iov != NULL){
+        __compressor_freebuf(req->req_niov, req->req_iov);
+        free(req->req_iov);
+        req->req_iov = NULL;
+        req->req_niov = 0;
+    }
+    
+    
+    if(repmsgp != NULL){
+        free(repmsgp);
+        repmsgp = NULL;
+    }
+    
+    
+    if(req != NULL){
+        __amp_free_request(req);
+    }
+    
+    DCS_LEAVE("__dcs_compressor_read leave \n");
+    return rc;
+    /*
     chunk_num = msgp->u.s2d_req.chunk_num;
     DCS_MSG("chunk num is %d \n", chunk_num);
     if(chunk_num == 0){
@@ -1095,9 +1258,9 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
         goto EXIT;
     }
 
-    /*get the data begin offset*/
+    //*get the data begin offset
     begin_offset = datamap[0].offset;
-    /*request data size*/
+    //*request data size
     //DCS_MSG("chunk_num is %d \n", chunk_num);
     datasize = datamap[chunk_num - 1].offset - datamap[0].offset + datamap[chunk_num - 1].chunksize;
     data = (dcs_s8_t *)malloc(datasize);
@@ -1116,7 +1279,7 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
             }
         }
 
-        /*new container*/
+        //*new container
         if(j == container_num){
             con_chunk_info[container_num].container_id = datamap[i].container_id;
             con_chunk_info[container_num].chunk_num = 1;
@@ -1124,10 +1287,10 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
         }
     }
 
-    /*finish anlyze the datamap we get the container number*/
+    //*finish anlyze the datamap we get the container number
     //con_chunk_info = (container_chunk_t *)realloc(con_chunk_info, sizeof(container_chunk_t)*container_num);
     
-    /*get the data from the container*/
+    //*get the data from the container
     //DCS_MSG("container_num is %d \n", container_num);
     for(i=0; i<container_num; i++){
         dcs_u32_t con_size = 0;
@@ -1141,7 +1304,7 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
             goto EXIT;
         }
 
-        /*get chunk data from a container*/
+        //*get chunk data from a container
         for(j=0; j<chunk_num; j++){
             //DCS_MSG("chunk_num is %d, j is %d  \n", chunk_num, j);
             if(datamap[j].container_id == con_chunk_info[i].container_id){
@@ -1153,14 +1316,14 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
             }
         }
 
-        /*free the tmp buf*/
-        /*
-        if(container_data != NULL){
-            DCS_MSG("before free data container \n");
-            free(container_data);
-            container_data = NULL;
-        }
-        */
+        //*free the tmp buf
+        //*
+        //if(container_data != NULL){
+            //DCS_MSG("before free data container \n");
+            //free(container_data);
+            //container_data = NULL;
+        //}
+        //
 
         if(con_chunk_info[i].chunk_num != 0){
             rc = -1;
@@ -1257,6 +1420,7 @@ EXIT:
 
     DCS_LEAVE("__dcs_compressor_read leave \n");
     return rc;
+     */
 }
 
 /*get sample FPs*/

@@ -106,6 +106,8 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     dcs_s32_t query_result = -1;
     dcs_u32_t filetype = 0;
     dcs_u64_t filesize = 0;
+    dcs_u64_t inode = 0;
+    dcs_u64_t timestamp;
     DCS_ENTER("__dcs_readquery_server enter\n");
     
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
@@ -115,6 +117,7 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     memcpy(filename1, req->req_iov->ak_addr, req->req_iov->ak_len);
     filename = filename1;
     //filetype = msgp->filetype;
+    printf("get from client:\nreqsize: %d, clientid: %d, filename: %s\n", reqsize, clientid, filename1);
     
     size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
     repmsgp = (amp_message_t *)malloc(size);
@@ -125,31 +128,41 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     }
     memset(repmsgp, 0, size);
     memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    if (req->req_msg) {
+        free(req->req_msg);
+        req->req_msg = NULL;
+    }
     
     pthread_mutex_lock(&server_table_lock);
     if (server_table.find(filename) != server_table.end()) {
         query_result = 1;
         filetype = server_table[filename].filetype;
         filesize = server_table[filename].filesize;
+        inode = server_table[filename].inode;
+        timestamp = server_table[filename].timestamp;
     } else {
         query_result = 0;
     }
     pthread_mutex_unlock(&server_table_lock);
     msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
     msgp->msg_type = is_rep;
-    //msgp->size = size;
+    msgp->size = size;
     msgp->fromtype = DCS_SERVER;
     msgp->fromid = server_this_id;
     if (query_result == 1) {
         msgp->filetype = filetype;
         msgp->filesize = filesize;
+        msgp->inode = inode;
+        msgp->timestamp = timestamp;
         msgp->ack = 1;
         //req->req_iov = NULL;
-        req->req_type = AMP_REPLY | AMP_MSG;
+        req->req_type = AMP_REPLY | AMP_DATA;
         printf("||||got!\n");
     } else {
         msgp->filetype = 0;
         msgp->filesize = 0;
+        msgp->inode = 0;
+        msgp->timestamp = 0;
         msgp->ack = 0;
         //req->req_iov = NULL;
         req->req_type = AMP_REPLY | AMP_MSG;
@@ -161,6 +174,7 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     req->req_resent = 0;
     
     rc = amp_send_sync(server_comp_context, req, DCS_CLIENT, clientid, 0);
+    printf("send to client\n");
     if (rc != 0) {
         DCS_ERROR("__dcs_readquery_server send data to client error\n");
         goto EXIT;
@@ -171,6 +185,14 @@ EXIT:
     //    free(repmsgp);
     //    repmsgp = NULL;
     //}
+    if (req->req_iov) {
+        __server_freebuf(req->req_niov, req->req_iov);
+        free(req->req_iov);
+        req->req_iov = NULL;
+    }
+    if (req) {
+        __amp_free_request(req);
+    }
     DCS_LEAVE("__dcs_readquery_server leave\n");
     return rc;
 }
@@ -288,6 +310,8 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     server_table[filename].filetype = filetype;
     server_table[filename].filesize = filesize;
     server_table[filename].compressor_id = target;
+    server_table[filename].inode = fileinode;
+    server_table[filename].timestamp = timestamp;
     memcpy(server_table[filename].md5, file_md5, MD5_STR_LEN + 1);
     pthread_mutex_unlock(&server_table_lock);
     /*
@@ -580,6 +604,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     msgp->fromtype = DCS_SERVER;
     msgp->optype = DCS_WRITE;
     msgp->filetype = filetype;      //by bxz
+    memcpy(msgp->md5, file_md5, MD5_STR_LEN + 1);
     //msgp->u.s2d_req.chunk_num = total_sha_num;
     msgp->u.s2d_req.chunk_num = 1;  //by bxz
     msgp->u.s2d_req.scsize = bufsize;
@@ -1636,58 +1661,283 @@ EXIT:
 dcs_s32_t __dcs_read_server(amp_request_t *req)
 {
     dcs_s32_t rc = 0;
-    dcs_s32_t i,j;
+    //dcs_s32_t i,j;
     dcs_u64_t fileinode;
     dcs_u32_t client_id;
-    dcs_s32_t pos = -1;
-    dcs_s32_t begin = -1;
+    //dcs_s32_t pos = -1;
+    //dcs_s32_t begin = -1;
     dcs_s32_t size = 0;
     //dcs_u32_t tmpbuf_size = 0;
-    dcs_u32_t tmpdata_size = 0;
-    dcs_u32_t buf_offset = 0;
-    dcs_s32_t end = 0;
+    //dcs_u32_t tmpdata_size = 0;
+    //dcs_u32_t buf_offset = 0;
+    //dcs_s32_t end = 0;
     dcs_u64_t reqsize;
     dcs_u64_t fileoffset;
-    dcs_u32_t chunk_num = 0;
-    dcs_u32_t tmp_num = 0;
-    dcs_s32_t target[DCS_COMPRESSOR_NUM];
-    dcs_s32_t target_num = 0;
-    dcs_s8_t *map_name = NULL;
+    //dcs_u32_t chunk_num = 0;
+    //dcs_u32_t tmp_num = 0;
+    //dcs_s32_t target[DCS_COMPRESSOR_NUM];
+    //dcs_s32_t target_num = 0;
+    //dcs_s8_t *map_name = NULL;
     //dcs_u8_t *tmpbuf = NULL;
     //dcs_datamap_t *map_buf = NULL;
-    dcs_mapbuf_t *map_buf = NULL;
+    //dcs_mapbuf_t *map_buf = NULL;
 
-    dcs_readinfo_t *read_info = NULL;
+    //dcs_readinfo_t *read_info = NULL;
     dcs_msg_t   *msgp = NULL;
     amp_message_t *repmsgp = NULL;
-    amp_request_t **req2d = NULL;
-    amp_message_t **reqmsgp2d = NULL;
-    /*repmsgp2d means reply message from compressor*/
-    amp_message_t **repmsgp2d = NULL;
+    //amp_request_t **req2d = NULL;
+    //amp_message_t **reqmsgp2d = NULL;
+    //repmsgp2d means reply message from compressor
+    //amp_message_t **repmsgp2d = NULL;
+    amp_request_t *req2d = NULL;
+    amp_message_t *reqmsgp2d = NULL;
+    amp_message_t *repmsgp2d = NULL;
     dcs_s8_t    *tmpdata = NULL;
-    dcs_s8_t    *buf = NULL;
+    //dcs_s8_t    *buf = NULL;
     dcs_u64_t   timestamp;
+    
+    //bxz
+    dcs_s8_t filename1[PATH_LEN];
+    string filename;
+    dcs_u32_t target_compressor = 0;
+    dcs_s8_t file_md5[MD5_STR_LEN + 1];
+    dcs_s8_t query_result = 0;
+    dcs_u32_t filetype = 0;
+    dcs_u32_t tmpdata_size;
 
     DCS_ENTER("__dcs_read_server enter \n");
     
     msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
     reqsize = msgp->u.c2s_req.size;
-    DCS_MSG("__dcs_read_server reqsize is %ld \n", reqsize);
+    printf("__dcs_read_server reqsize is %ld \n", reqsize);
     fileinode = msgp->u.c2s_req.inode;
     timestamp = msgp->u.c2s_req.timestamp;
-    /*request data offset in a file*/
+    memcpy(filename1, msgp->u.c2s_req.filename, strlen(msgp->u.c2s_req.filename));   //bxz
+    memcpy(file_md5, msgp->md5, MD5_STR_LEN + 1);
+    filename = filename1;
+    //request data offset in a file
     fileoffset = msgp->u.c2s_req.offset;
     client_id = msgp->fromid;
-    
-    dcs_u32_t super_size = SUPER_CHUNK_SIZE;
+    printf("read: md5: %s\nclient_id: %d\noffset: %d\n", file_md5, client_id, fileoffset);
 
+    //dcs_u32_t super_size = SUPER_CHUNK_SIZE;
+    printf("reqsize: %lu, filename: %s, fileoffset: %lu\n", reqsize, filename1, fileoffset);
 
     if(msgp->u.c2s_req.finish){
-        //DCS_MSG("__dcs_read_server this is finish message \n");
+        printf("__dcs_read_server this is finish message \n");
         rc = __dcs_read_finish(fileinode, timestamp, client_id, req);
         goto EXIT;
     }
-
+    
+    printf("1\n");
+    pthread_mutex_lock(&server_table_lock);
+    if (server_table.find(filename) != server_table.end()) {
+        query_result = 1;
+        target_compressor = server_table[filename].compressor_id;
+        memcpy(file_md5, server_table[filename].md5, MD5_STR_LEN + 1);
+        filetype = server_table[filename].filetype;
+    }
+    pthread_mutex_unlock(&server_table_lock);
+    printf("2\n");
+    
+    if (query_result == 0 || target_compressor <= 0 || (filetype != DCS_FILETYPE_FASTA && filetype != DCS_FILETYPE_FASTQ)) {
+        query_result = 0;
+        goto SEND_ACK;
+    }
+    printf("3\n");
+    rc = __amp_alloc_request(&req2d);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_read_server alloc for req2d error[%d]\n", rc);
+        goto EXIT;
+    }
+    printf("4\n");
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    reqmsgp2d = (amp_message_t *)malloc(size);
+    if (reqmsgp2d == NULL) {
+        DCS_ERROR("__dcs_read_server malloc for reqmsgp2d error[%d]\n", errno);
+        rc = -1;
+        goto EXIT;
+    }
+    memset(reqmsgp2d, 0, size);
+    //memcpy(reqmsgp2d, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp2d + AMP_MESSAGE_HEADER_LEN);
+    msgp->size = size;
+    msgp->optype = DCS_READ;
+    msgp->msg_type = is_req;
+    msgp->fromid = DCS_SERVER;
+    msgp->fromid = server_this_id;
+    memcpy(msgp->md5, file_md5, MD5_STR_LEN + 1);
+    msgp->u.s2d_req.offset = fileoffset;
+    msgp->u.s2d_req.filetype = filetype;
+    
+    req2d->req_iov = NULL;
+    req2d->req_niov = 0;
+    req2d->req_msg = reqmsgp2d;
+    req2d->req_msglen = size;
+    req2d->req_need_ack = 1;
+    req2d->req_resent = 1;
+    req2d->req_type = AMP_REQUEST | AMP_MSG;
+    
+    printf("5\n");
+    
+    rc = amp_send_sync(server_comp_context,
+                       req2d,
+                       DCS_NODE,
+                       target_compressor,
+                       0);
+    printf("6\n");
+    if (rc < 0) {
+        DCS_ERROR("__dcs_read_server send read req error[%d]\n", rc);
+        goto EXIT;
+    }
+    printf("7\n");
+    //get the data from compressor
+    repmsgp2d = req2d->req_reply;
+    if (repmsgp2d == NULL) {
+        DCS_ERROR("__dcs_read_server cannot recieve the fata from compressor\n");
+        rc = -1;
+        goto EXIT;
+    }
+    if (req2d->req_iov == NULL) {
+        DCS_ERROR("__dcs_read_server get no reply data from compressor\n");
+        rc = -1;
+        goto EXIT;
+    }
+    printf("8\n");
+    
+    /*
+    if (filetype == DCS_FILETYPE_FASTA) {
+        tmpdata_size = FA_CHUNK_SIZE;
+    } else {
+        tmpdata_size = FQ_CHUNK_SIZE;
+    }
+    tmpdata = (dcs_s8_t *)malloc(tmpdata_size);
+    if (tmpdata == NULL) {
+        DCS_ERROR("__dcs_read_server malloc for tmpdata error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+     */
+    tmpdata = (dcs_s8_t *)malloc(reqsize);
+    if (tmpdata == NULL) {
+        DCS_ERROR("__dcs_read_server malloc for tmpdata error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(tmpdata, 0, reqsize);
+    memcpy(tmpdata, req2d->req_iov->ak_addr, reqsize);//req2d->req_iov->ak_len);
+    printf("data:\n%s[%d]\n", req2d->req_iov->ak_addr, req2d->req_iov->ak_len);
+    printf("9\n");
+    
+SEND_ACK:
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    repmsgp = (amp_message_t *)malloc(size);
+    if (repmsgp == NULL) {
+        DCS_ERROR("__dcs_read_server malloc for repmsgp error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    memset(repmsgp, 0, size);
+    
+    memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    /*
+    if (req->req_msg != NULL) {
+        free(req->req_msg);
+        req->req_msg = NULL;
+    }
+     */
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->msg_type = is_rep;
+    msgp->size = size;
+    msgp->fromtype = DCS_SERVER;
+    msgp->fromid = server_this_id;
+    
+    printf("query result: %d\n", query_result);
+    printf("remote type: %d, remote id: %d\n", req->req_remote_type, req->req_remote_id);
+    if (query_result == 1) {
+        msgp->u.s2c_reply.offset = fileoffset;
+        msgp->u.s2c_reply.size = reqsize;
+        msgp->ack = 1;
+        req->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
+        if (req->req_iov == NULL) {
+            DCS_ERROR("__dcs_read_server malloc for reply iov error[%d]\n", errno);
+            rc = errno;
+            goto EXIT;
+        }
+        
+        req->req_iov->ak_addr = tmpdata;
+        req->req_iov->ak_len = reqsize;//strlen(tmpdata);
+        req->req_iov->ak_flag = 0;
+        req->req_iov->ak_offset = 0;
+        req->req_niov = 1;
+        req->req_type = AMP_REPLY | AMP_DATA;
+    } else {
+        msgp->u.s2c_reply.offset = 0;
+        msgp->u.s2c_reply.size = 0;
+        msgp->ack = 0;
+        req->req_iov = NULL;
+        req->req_niov = 0;
+        req->req_type = AMP_REPLY | AMP_MSG;
+    }
+    
+    req->req_reply = repmsgp;
+    req->req_replylen = size;
+    req->req_need_ack = 0;
+    req->req_resent = 1;
+    printf("10\n");
+    
+    rc = amp_send_sync(server_comp_context,
+                       req,
+                       DCS_CLIENT,
+                       client_id,
+                       0);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_read_server send reply to client error[%d]\n", rc);
+        goto EXIT;
+    }
+    
+EXIT:
+    
+    if (reqmsgp2d != NULL) {
+        free(reqmsgp2d);
+        reqmsgp2d = NULL;
+    }
+    
+    if (repmsgp2d != NULL) {
+        free(repmsgp2d);
+        repmsgp2d = NULL;
+    }
+    
+    if (req2d != NULL) {
+        if (req2d->req_iov) {
+            __server_freebuf(req2d->req_niov, req2d->req_iov);
+            free(req2d->req_iov);
+            req2d->req_iov = NULL;
+        }
+        __amp_free_request(req2d);
+    }
+    
+    if(req->req_iov != NULL){
+        __server_freebuf(req->req_niov, req->req_iov);
+        free(req->req_iov);
+        req->req_iov = NULL;
+        //req->req_niov = 0;
+    }
+    
+    
+    if (repmsgp) {
+        free(repmsgp);
+        repmsgp = NULL;
+    }
+    if(req != NULL){
+        __amp_free_request(req);
+    }
+    
+    DCS_LEAVE("__dcs_read_server leave \n");
+    return rc;
+    /*
     for(i=0; i<DCS_COMPRESSOR_NUM; i++){
         target[i] = 0;
     }
@@ -1730,10 +1980,10 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
         goto EXIT;
     }
 
-    /*classify all the chunk into some compressor id
-     * here use a simple way
-     * if the compressor id is not continue
-     * we consider it to be a different one*/
+    //*classify all the chunk into some compressor id
+     //* here use a simple way
+     //* if the compressor id is not continue
+     //* we consider it to be a different one
     j=0;
     DCS_MSG("chunk num is %d \n", chunk_num);
     for(i=0; i<chunk_num; i++){
@@ -1800,7 +2050,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
         repmsgp2d[i] = NULL;
     }
 
-    /*malloc for server to client buf*/
+    //*malloc for server to client buf
     tmpdata_size = map_buf->datamap[chunk_num - 1].offset - map_buf->datamap[0].offset + map_buf->datamap[chunk_num - 1].chunksize;
     tmpdata = (dcs_s8_t *)malloc(tmpdata_size);
     if(tmpdata == NULL){
@@ -1810,7 +2060,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     }
     memset(tmpdata, 0, tmpdata_size);
 
-    /*buf_offset is offset in the databuf which get data from compressor*/
+    //*buf_offset is offset in the databuf which get data from compressor
     buf_offset = 0;
 
     for(i=0 ; i<target_num; i++){
@@ -1867,7 +2117,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
             goto EXIT;
         }
 
-        /*get data from the compressor*/
+        //*get data from the compressor
         repmsgp2d[i] = req2d[i]->req_reply;
         if(repmsgp2d[i] == NULL){
             DCS_ERROR("__dcs_read_server cannot recieve data from %dth compressor\n",i);
@@ -1886,9 +2136,9 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
 
     }
     
-    /*as the offset of request data is may not the begin from a chunk, 
-      we have to cut some data from the beginning and the tail.*/
-    /*this buf is use for retrun to the client*/
+    //*as the offset of request data is may not the begin from a chunk,
+      //we have to cut some data from the beginning and the tail.
+    //*this buf is use for retrun to the client
     //DCS_MSG("11 \n");
     buf = (dcs_s8_t *)malloc(reqsize);
     if(buf == NULL){
@@ -2026,12 +2276,12 @@ EXIT:
     }
 
     //DCS_MSG("1\n");
-    /*
-    if(buf != NULL){
-        free(buf);
-        buf = NULL;
-    }
-    */
+    //
+    //if(buf != NULL){
+    //    free(buf);
+      //  buf = NULL;
+    //}
+    
     
     //DCS_MSG("12\n");
     if(req->req_msg){
@@ -2053,6 +2303,7 @@ EXIT:
 
     DCS_LEAVE("__dcs_read_server leave \n");
     return rc;
+     */
 }
 
 /*process finish request
@@ -2067,22 +2318,24 @@ dcs_s32_t __dcs_read_finish(dcs_u64_t inode,
 {
     dcs_s32_t rc = 0;
     dcs_u32_t size = 0;
-    dcs_s8_t  *map_name = NULL;
+    //dcs_s8_t  *map_name = NULL;
     
     amp_message_t *repmsgp = NULL;
     dcs_msg_t   *msgp = NULL;
 
     DCS_ENTER("_dcs_read_finish enter \n");
 
+    /*
     map_name = get_map_name(inode, client_id, timestamp);
     if(map_name == NULL){
         DCS_ERROR("__dcs_read_finish get map name err:%d \n",errno);
         rc = errno;
         goto EXIT;
     }
+     */
     
     /*free map buf*/
-    rc = free_map_buf(map_name);
+    //rc = free_map_buf(map_name);
     if(rc != 0){
         DCS_ERROR("__dcs_read_finish free map buf err:%d \n", rc);
         goto EXIT;
@@ -2129,10 +2382,12 @@ dcs_s32_t __dcs_read_finish(dcs_u64_t inode,
 
 EXIT:
     //DCS_MSG("3\n");
+    /*
     if(map_name != NULL){
         free(map_name);
         map_name = NULL;
     }
+    */
 
     //DCS_MSG("4\n");
     if(repmsgp != NULL){

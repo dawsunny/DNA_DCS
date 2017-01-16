@@ -42,7 +42,7 @@ dcs_s32_t __dcs_clt_op()
     
     DCS_ENTER("__dcs_clt_op enter \n");
     if(clt_optype == DCS_READ){
-        rc = __dcs_clt_get_read_filename(clt_pathname);
+        rc = __dcs_clt_get_read_filename(clt_pathname, file_tobe_stored);
         //rc = __dcs_clt_read_file(clt_pathname);
         if(rc < 0){
             DCS_ERROR("__dcs_clt_op read file err %d \n", rc);
@@ -1450,7 +1450,7 @@ EXIT:
     }
 }
 
-dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
+dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path, dcs_s8_t *file_tobe_stored)
 {
     dcs_s32_t rc = 0;
     //dcs_s8_t filename[PATH_LEN];
@@ -1479,6 +1479,8 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     amp_message_t *reqmsgp = NULL;
     amp_message_t *repmsgp = NULL;
     dcs_msg_t *msgp = NULL;
+    dcs_u64_t inode = 0;
+    dcs_u64_t timestamp = 0;
     
     /*
     for (i = strlen(path) - 1; i >= 0; --i) {
@@ -1510,7 +1512,7 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     }
     memset(reqmsgp, 0, size);
     msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp + AMP_MESSAGE_HEADER_LEN);
-    msgp->size = size;
+    //msgp->size = size;
     msgp->seqno = 0;
     msgp->msg_type = is_req;
     msgp->fromid = clt_this_id;
@@ -1526,7 +1528,7 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     }
     //memset(req->req_iov, 0, sizeof(amp_kiov_t));
     req->req_iov->ak_addr = path;
-    req->req_iov->ak_len = strlen(path) + 1;
+    req->req_iov->ak_len = strlen(path);
     req->req_iov->ak_offset = 0;
     req->req_iov->ak_flag = 0;
     req->req_niov = 1;
@@ -1537,29 +1539,32 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     req->req_type = AMP_REQUEST | AMP_DATA;
     for (i = 0; i < DCS_SERVER_NUM; ++i) {
     SEND_AGAIN:
-        printf("0\n");
+        printf("rq0\n");
         rc = amp_send_sync(clt_comp_context, req, DCS_SERVER, (i + 1), 0);
         if(rc != 0){
             DCS_ERROR("__dcs_clt_get_read_filename amp send err: %d \n", rc);
             goto EXIT;
         }
-        printf("1\n");
+        printf("rq1\n");
         repmsgp = req->req_reply;
         if(!repmsgp){
-            printf("2\n");
+            printf("rq2\n");
             DCS_ERROR("__dcs_clt_get_read_filename cannot recieve the reply msg \n");
             goto SEND_AGAIN;
         }
         else{
-            printf("3\n");
+            printf("rq3\n");
             msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
             if(msgp->ack == 0){
                 continue;
             }
-            printf("4\n");
+            printf("rq4\n");
             target_server = msgp->fromid;
             filesize = msgp->filesize;
             filetype = msgp->filetype;
+            inode = msgp->inode;
+            timestamp = msgp->timestamp;
+            
             /*
             if(req->req_iov){
                 __client_freebuf(req->req_niov, req->req_iov);
@@ -1572,6 +1577,7 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
                 amp_free(repmsgp, req->req_replylen);
             }
              */
+             
             break;
         }
     }
@@ -1595,6 +1601,9 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     tmp->target_server = target_server;
     tmp->filetype = filetype;
     tmp->filesize = filesize;
+    tmp->inode = inode;
+    tmp->timestamp = timestamp;
+    memcpy(tmp->file_tobe_stored, file_tobe_stored, strlen(file_tobe_stored));
     pthread_mutex_lock(&clt_read_lock);
     list_add_tail(&tmp->file_list, &read_queue);
     pthread_mutex_unlock(&clt_read_lock);
@@ -1605,6 +1614,39 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
     pthread_mutex_unlock(&file_num_lock);
     
     sem_post(&read_sem);
+EXIT:
+    //if(filename != NULL){
+    //  free(filename);
+    //filename = NULL;
+    //}
+    
+    if(NULL != req){
+        if(req->req_iov != NULL){
+            if (req->req_iov->ak_addr) {
+                //free(req->req_iov->ak_addr);
+                req->req_iov->ak_addr = NULL;
+            }
+            free(req->req_iov);
+            req->req_iov = NULL;
+            req->req_niov = 0;
+        }
+        
+        if(reqmsgp != NULL){
+            free(reqmsgp);
+            reqmsgp = NULL;
+        }
+        
+        if(repmsgp != NULL){
+            free(repmsgp);
+            repmsgp = NULL;
+        }
+        
+        __amp_free_request(req);
+    }
+    
+     
+    DCS_LEAVE("__dcs_clt_get_filename leave \n");
+    return rc;
     
     //by bxz end
     /*
@@ -1743,16 +1785,37 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path)
 
     closedir(dp);
     free(meta_path);
-     */
+    
 
 EXIT:
     //if(filename != NULL){
       //  free(filename);
         //filename = NULL;
     //}
+    if(NULL != req){
+        if(req->req_iov != NULL){
+            free(req->req_iov->ak_addr);
+            free(req->req_iov);
+            req->req_iov = NULL;
+            req->req_niov = 0;
+        }
+        
+        if(reqmsgp != NULL){
+            free(reqmsgp);
+            reqmsgp = NULL;
+        }
+        
+        if(repmsgp != NULL){
+            free(repmsgp);
+            repmsgp = NULL;
+        }
+        
+        __amp_free_request(req);
+    }
 
     DCS_LEAVE("__dcs_clt_get_filename leave \n");
     return rc;
+     */
 }
 
 /* read file from server
@@ -1760,18 +1823,18 @@ EXIT:
  * 2.send read request to server
  * 3.get data until finish
  */
-dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp) 
+dcs_s32_t __dcs_clt_read_file(dcs_clt_file_t *clt_file, dcs_thread_t *threadp) 
 {
-    dcs_s32_t rc;
+    dcs_s32_t rc = 0;
     dcs_u32_t server_id = 0;
-    dcs_s32_t meta_fd = 0;
+    //dcs_s32_t meta_fd = 0;
     dcs_s32_t size;
-    dcs_u64_t inode;
-    dcs_u64_t timestamp;
+    //dcs_u64_t inode;
+    //dcs_u64_t timestamp;
     dcs_u64_t filesize;
     dcs_u32_t bufsize;
     dcs_u64_t fileoffset = 0;
-    dcs_s8_t  *meta_file;
+    //dcs_s8_t  *meta_file;
     amp_request_t *req = NULL;
     amp_message_t *reqmsgp = NULL;
     amp_message_t *repmsgp = NULL;
@@ -1779,14 +1842,32 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     dcs_c2s_req_t c2s_req;
     dcs_s32_t read_fd;
 
-    struct stat *tmpbuf;
+    //struct stat *tmpbuf;
     
     DCS_ENTER("__dcs_clt_read_file enter \n");
 
     DCS_MSG("filename is %s \n", filename);
+    
+    if (clt_file->filetype == DCS_FILETYPE_FASTA) {
+        bufsize = FA_CHUNK_SIZE;
+    } else if (clt_file->filetype == DCS_FILETYPE_FASTQ) {
+        bufsize = FQ_CHUNK_SIZE;
+    } else {
+        rc = -1;
+        DCS_ERROR("__dcs_clt_read_file filetype[%d] error\n", clt_file->filetype);
+        goto EXIT;
+    }
+    
+    read_fd = open(clt_file->file_tobe_stored, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    if (read_fd <= 0) {
+        DCS_ERROR("__dcs_clt_read_file open/create the file %s error: %d\n", clt_file->file_tobe_stored, read_fd);
+        rc = -1;
+        goto EXIT;
+    }
+    /*
     bufsize = SUPER_CHUNK_SIZE;
-    read_fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, 0666);
-    meta_file = get_meta_path(filename);
+    read_fd = open(clt_file, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    meta_file = get_meta_path(clt_file);
     if(meta_file == NULL){
         DCS_ERROR("__dcs_clt_read_file get meta file name err\n");
         rc = -1;
@@ -1813,7 +1894,14 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
     inode = tmpbuf->st_ino;
     filesize  = tmpbuf->st_size;
     timestamp = tmpbuf->st_mtime;
+     */
 
+    filesize = clt_file->filesize;
+    printf("|||||target server: %d\n", clt_file->target_server);
+    printf("|||||filesize: %lu\n", clt_file->filesize);
+    printf("|||||filetype: %d\n", clt_file->filetype);
+    printf("|||||filename: %s\n", clt_file->filename);
+    printf("|||||file tobe stored: %s\n", clt_file->file_tobe_stored);
     rc = __amp_alloc_request(&req);
     if(rc < 0){
         DCS_ERROR("__dcs_clt_read_file alloc request err:%d \n", errno);
@@ -1823,11 +1911,12 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
 
     while(fileoffset < filesize){
         c2s_req.size = bufsize;
-        if(fileoffset + SUPER_CHUNK_SIZE > filesize)
+        if(fileoffset + bufsize > filesize)
             c2s_req.size = filesize - fileoffset;
-        DCS_MSG("bufsize is %d , fileoffset is %ld , filesize is %ld, c2s.reqsize is %d \n", bufsize, fileoffset, filesize, c2s_req.size);
-        c2s_req.inode = inode;
-        c2s_req.timestamp = timestamp;
+        printf("bufsize is %d , fileoffset is %ld , filesize is %ld, c2s.reqsize is %d \n", bufsize, fileoffset, filesize, c2s_req.size);
+        //c2s_req.inode = inode;
+        //c2s_req.timestamp = timestamp;
+        memcpy(c2s_req.filename, clt_file->filename, strlen(clt_file->filename));
         c2s_req.offset = fileoffset;
         c2s_req.finish = 0;
 
@@ -1859,12 +1948,15 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         req->req_need_ack = 1;
         req->req_resent = 1;
         req->req_type = AMP_REQUEST | AMP_MSG;
-        //DCS_MSG("1 \n");
+        printf("r1 \n");
 
 //SEND_AGAIN:
+        /*
     server_id = c2s_req.inode % DCS_SERVER_NUM;
     if(server_id == 0)
         server_id = DCS_SERVER_NUM;
+         */
+        server_id = clt_file->target_server;
 
         rc = amp_send_sync(clt_comp_context, 
                         req, 
@@ -1872,33 +1964,35 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                         server_id, 
                         0);
 
-    DCS_MSG("server_id is %d, client_id is %d, inode is %ld \n"
+    printf("server_id is %d, client_id is %d, inode is %ld \n"
             ,server_id, clt_this_id, c2s_req.inode);
 
-        //DCS_MSG("2 \n");
+        //printf("r2 \n");
         if(rc < 0){
             DCS_ERROR("__dcs_clt_read_file send request err: %d \n", errno);
             goto EXIT;
         }
 
-        //DCS_MSG("3 \n");
+        //printf("r3 \n");
+        //get the data from server
         repmsgp = req->req_reply;
         if(!repmsgp){
             DCS_ERROR("__dcs_clt_read_file fail to recieve replymsg \n");
             //goto SEND_AGAIN;
         }
+        printf("ack: %d\n", ((dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN))->ack);
         if(!((dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN))->ack){
             DCS_ERROR("__dcs_clt_read_file failed, maybe the mapfile is not in the server\n");
             goto EXIT;
         }
 
-        //DCS_MSG("4 \n");
+        printf("r4 \n");
         if(req->req_iov == NULL){
             DCS_MSG("__dcs_clt_read_file no data in reply msg \n");
             goto CONTINUE;
         }
         else{
-        //DCS_MSG("5 \n");
+        //printf("r5 \n");
             msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
             if(msgp->u.s2c_reply.offset != fileoffset){
                 DCS_ERROR("__dcs_clt_read_file recieve wrong data\n");
@@ -1906,20 +2000,27 @@ dcs_s32_t __dcs_clt_read_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             }
 
             lseek(read_fd, fileoffset, SEEK_SET);
-
+printf("data:\n%s[%zu]\n", req->req_iov->ak_addr, strlen((dcs_s8_t *)req->req_iov->ak_addr));
             rc = write(read_fd, req->req_iov->ak_addr, req->req_iov->ak_len);
             if(rc != req->req_iov->ak_len){
+                printf("r5.1 \n");
+                printf("rc: %d, ak_len: %d\n", rc, req->req_iov->ak_len);
                 DCS_ERROR("__dcs_clt_read_file write data err: %d \n", errno);
                 goto CONTINUE;
             }
             else{
+                printf("r5.2 \n");
+                printf("rc: %d, ak_len: %d\n", rc, req->req_iov->ak_len);
+                
                 fileoffset = fileoffset + rc;
                 rc = 0;
             }
-        //DCS_MSG("6 \n");
+        printf("r6 \n");
         }
 
 CONTINUE:
+        printf("r7 \n");
+        
         if(req->req_iov != NULL){
             free(req->req_iov->ak_addr);
             free(req->req_iov);
@@ -1936,10 +2037,12 @@ CONTINUE:
             free(repmsgp);
             repmsgp = NULL;
         }
+        
     }
 
     if(fileoffset == filesize){
-        rc = __client_send_finish_msg(inode, timestamp, threadp);
+        //rc = __client_send_finish_msg(inode, timestamp, threadp);
+        rc = __client_send_finish_msg(clt_file->filename, clt_file->target_server, threadp);
         if(rc != 0){
             DCS_ERROR("__dcs_clt_read_file send finish message err: %d \n", rc);
             goto EXIT;
@@ -1980,10 +2083,10 @@ EXIT:
     }
 }
 
-dcs_s32_t __client_send_finish_msg(dcs_u64_t inode, dcs_u64_t timestamp, dcs_thread_t *threadp)
+dcs_s32_t __client_send_finish_msg(dcs_s8_t *read_filename, dcs_u32_t target_server, dcs_thread_t *threadp)
 {
     dcs_s32_t rc = 0;
-    dcs_u32_t server_id = 0;
+    //dcs_u32_t server_id = 0;
     dcs_u32_t size = 0;
     
     dcs_msg_t *msgp = NULL;
@@ -2002,10 +2105,11 @@ dcs_s32_t __client_send_finish_msg(dcs_u64_t inode, dcs_u64_t timestamp, dcs_thr
     }
 
     c2s_req.size = 0;
-    c2s_req.inode = inode;
-    c2s_req.timestamp = timestamp;
+    //c2s_req.inode = inode;
+    //c2s_req.timestamp = timestamp;
     c2s_req.offset = 0;
     c2s_req.finish = 1;
+    memcpy(c2s_req.filename, read_filename, strlen(read_filename));
 
     size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
     //size = DCS_MSGHEAD_SIZE + sizeof(dcs_c2s_req_t);
@@ -2024,6 +2128,7 @@ dcs_s32_t __client_send_finish_msg(dcs_u64_t inode, dcs_u64_t timestamp, dcs_thr
     msgp->fromtype = DCS_CLIENT;
     msgp->optype = DCS_READ;
     msgp->ack = 0;
+    
 
     msgp->u.c2s_req = c2s_req;
 
@@ -2037,14 +2142,14 @@ dcs_s32_t __client_send_finish_msg(dcs_u64_t inode, dcs_u64_t timestamp, dcs_thr
     req->req_type = AMP_REQUEST | AMP_MSG;
 
 SEND_AGAIN:
-    server_id = c2s_req.inode % DCS_SERVER_NUM;
-    if(server_id == 0)
-        server_id = DCS_SERVER_NUM;
+    //server_id = c2s_req.inode % DCS_SERVER_NUM;
+    //if(server_id == 0)
+    //    server_id = DCS_SERVER_NUM;
 
     rc = amp_send_sync(clt_comp_context, 
                     req, 
                     DCS_SERVER, 
-                    server_id, 
+                    target_server,
                     0);
     if(rc < 0){
         DCS_ERROR("__client_send_finish_msg send request err: %d \n", errno);
