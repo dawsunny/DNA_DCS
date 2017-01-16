@@ -22,6 +22,7 @@ struct __dcs_c2s_req
     dcs_u64_t timestamp;
     dcs_u32_t target_server;    //bxz
     dcs_s8_t filename[256];
+    dcs_u32_t filename_len;
 };
 typedef struct __dcs_c2s_req dcs_c2s_req_t;
 

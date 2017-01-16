@@ -1175,6 +1175,7 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
     dcs_u64_t offset;
     dcs_u32_t filetype;
     dcs_s8_t input_path[PATH_LEN];
+    memset(input_path, 0, PATH_LEN);
     dcs_s8_t query_result = 0;
     string data1;
 
@@ -1203,17 +1204,28 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
         }
         pthread_mutex_unlock(&compressor_location_fa_lock);
         memcpy(input_path, compressor_location_fa[file_md5].off_loc[offset].c_str(), compressor_location_fa[file_md5].off_loc[offset].size());
-        data = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
-        if (data == NULL) {
-            DCS_ERROR("__dcs_compressor_read malloc for data fa error[%d]\n", errno);
-            rc = errno;
-            goto EXIT;
+        
+        if (access(input_path, F_OK) != 0) {
+            //DCS_ERROR("__dcs_compressor_read no corresponding data\n");
+            //rc = -1;
+            //goto EXIT;
+            query_result = 0;
         }
-        memset(data, 0, FA_CHUNK_SIZE);
-        dc_d_main(input_path, data1, 0);
-        memcpy(data, data1.c_str(), data1.size());
-        datasize = strlen(data);
-        printf("data:\n%s[%d]\n", data, datasize);
+        
+        if (query_result == 1) {
+            data = (dcs_s8_t *)malloc(FA_CHUNK_SIZE);
+            if (data == NULL) {
+                DCS_ERROR("__dcs_compressor_read malloc for data fa error[%d]\n", errno);
+                rc = errno;
+                goto EXIT;
+            }
+            memset(data, 0, FA_CHUNK_SIZE);
+            dc_d_main(input_path, data1, 0);
+            memcpy(data, data1.c_str(), data1.size());
+            datasize = strlen(data);
+            printf("data:\n%s[%d]\n", data, datasize);
+        }
+        
     } else if (filetype == DCS_FILETYPE_FASTQ) {
         printf("||||reading fastq data...\n");
     } else {

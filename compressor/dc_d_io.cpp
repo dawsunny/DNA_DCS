@@ -53,11 +53,11 @@ dc_d_check_arg(dc_s8_t *input)
 
     dc_d_DIF_RATE = 0.01;
     LINE_LEN = 60;
-    if (access(input, 0) != 0) {
-        rc = errno;
-        DC_ERROR("dc_d_check_arg input file error[%d]\n", errno);
-        goto EXIT;
-    }
+    //if (access(input, 0) != 0) {
+    //    rc = errno;
+    //    DC_ERROR("dc_d_check_arg input file error[%d]\n", errno);
+    //    goto EXIT;
+    //}
 
     /*
     if( argc != 3 && argc != 5 && argc != 7) 

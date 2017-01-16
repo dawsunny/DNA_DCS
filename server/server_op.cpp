@@ -114,6 +114,7 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     reqsize = msgp->u.c2s_req.size;
     clientid = msgp->fromid;
     //filename = (dcs_s8_t *)req->req_iov->ak_addr;
+    memset(filename1, 0, PATH_LEN);
     memcpy(filename1, req->req_iov->ak_addr, req->req_iov->ak_len);
     filename = filename1;
     //filetype = msgp->filetype;
@@ -181,10 +182,10 @@ dcs_s32_t __dcs_readquery_server(amp_request_t *req) {
     }
     
 EXIT:
-    //if (repmsgp) {
-    //    free(repmsgp);
-    //    repmsgp = NULL;
-    //}
+    if (repmsgp) {
+        free(repmsgp);
+        repmsgp = NULL;
+    }
     if (req->req_iov) {
         __server_freebuf(req->req_niov, req->req_iov);
         free(req->req_iov);
@@ -1770,6 +1771,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     
     //bxz
     dcs_s8_t filename1[PATH_LEN];
+    memset(filename1, 0, PATH_LEN);
     string filename;
     dcs_u32_t target_compressor = 0;
     dcs_s8_t file_md5[MD5_STR_LEN + 1];
@@ -1784,7 +1786,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     printf("__dcs_read_server reqsize is %ld \n", reqsize);
     fileinode = msgp->u.c2s_req.inode;
     timestamp = msgp->u.c2s_req.timestamp;
-    memcpy(filename1, msgp->u.c2s_req.filename, strlen(msgp->u.c2s_req.filename));   //bxz
+    memcpy(filename1, msgp->u.c2s_req.filename, msgp->u.c2s_req.filename_len);   //bxz
     memcpy(file_md5, msgp->md5, MD5_STR_LEN + 1);
     filename = filename1;
     //request data offset in a file
@@ -1793,7 +1795,7 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     printf("read: md5: %s\nclient_id: %d\noffset: %d\n", file_md5, client_id, fileoffset);
 
     //dcs_u32_t super_size = SUPER_CHUNK_SIZE;
-    printf("reqsize: %lu, filename: %s, fileoffset: %lu\n", reqsize, filename1, fileoffset);
+    printf("reqsize: %lu, filename: %s[%d], fileoffset: %lu\n", reqsize, filename1, strlen(filename1), fileoffset);
 
     if(msgp->u.c2s_req.finish){
         printf("__dcs_read_server this is finish message \n");

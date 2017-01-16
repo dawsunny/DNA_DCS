@@ -1540,6 +1540,8 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path, dcs_s8_t *file_tobe_stored
     req->req_need_ack = 1;
     req->req_resent = 1;
     req->req_type = AMP_REQUEST | AMP_DATA;
+    
+    printf("path: %s[%d]\n", path, strlen(path));
     for (i = 0; i < DCS_SERVER_NUM; ++i) {
     SEND_AGAIN:
         printf("rq0\n");
@@ -1912,6 +1914,10 @@ dcs_s32_t __dcs_clt_read_file(dcs_clt_file_t *clt_file, dcs_thread_t *threadp)
         goto EXIT;
     }
 
+    memset(c2s_req.filename, 0, PATH_LEN);
+    memcpy(c2s_req.filename, clt_file->filename, strlen(clt_file->filename));
+    c2s_req.filename_len = strlen(clt_file->filename);
+    printf("clt_file->filename: %s[%d]\n", clt_file->filename, strlen(clt_file->filename));
     while(fileoffset < filesize){
         c2s_req.size = bufsize;
         if(fileoffset + bufsize > filesize)
@@ -1919,7 +1925,7 @@ dcs_s32_t __dcs_clt_read_file(dcs_clt_file_t *clt_file, dcs_thread_t *threadp)
         printf("bufsize is %d , fileoffset is %ld , filesize is %ld, c2s.reqsize is %d \n", bufsize, fileoffset, filesize, c2s_req.size);
         //c2s_req.inode = inode;
         //c2s_req.timestamp = timestamp;
-        memcpy(c2s_req.filename, clt_file->filename, strlen(clt_file->filename));
+        //memcpy(c2s_req.filename, clt_file->filename, strlen(clt_file->filename));
         c2s_req.offset = fileoffset;
         c2s_req.finish = 0;
 
