@@ -27,7 +27,7 @@ print_time(const char *explain, struct timeval start_time, struct timeval end_ti
 }
 
 dc_s32_t
-dc_d_main(dc_s8_t *input, dc_s8_t *output, dc_u32_t datasize)
+dc_d_main(dc_s8_t *input, string &output, dc_u32_t datasize)
 {
 	dc_s32_t rc = 0;
     struct timeval start_time, end_time;

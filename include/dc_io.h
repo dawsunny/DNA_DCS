@@ -48,7 +48,7 @@ extern dc_s32_t dc_d_check_arg(dc_s8_t *);
 
 extern dc_s32_t dc_d_read_ref_file( dc_s8_t *ref_file_path );
 
-extern void  write_to_file(vector<string> &inp_seqs, dc_s8_t *, dc_u32_t);
+extern void  write_to_file(vector<string> &inp_seqs, string &);
 
 extern void dc_d_free_memory();
 

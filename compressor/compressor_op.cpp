@@ -1106,6 +1106,7 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
     dcs_u32_t filetype;
     dcs_s8_t input_path[PATH_LEN];
     dcs_s8_t query_result = 0;
+    string data1;
 
     DCS_ENTER("__dcs_compressor_read enter \n");
     
@@ -1139,7 +1140,8 @@ dcs_s32_t __dcs_compressor_read(amp_request_t *req)
             goto EXIT;
         }
         memset(data, 0, FA_CHUNK_SIZE);
-        dc_d_main(input_path, data, 0);
+        dc_d_main(input_path, data1, 0);
+        memcpy(data, data1.c_str(), data1.size());
         datasize = strlen(data);
         printf("data:\n%s[%d]\n", data, datasize);
     } else if (filetype == DCS_FILETYPE_FASTQ) {

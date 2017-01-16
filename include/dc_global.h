@@ -2,6 +2,8 @@
 #define __DC_GLOBAL_H_
 
 #include <dc_type.h>
+#include <string>
+using namespace std;
 
 //defined in dc_io.c
 
@@ -25,5 +27,5 @@ extern int dc_d_OVERLAP;  //(REF_CHUNK + (int)(REF_CHUNK * dc_d_DIF_RATE))
 
 //file
 extern int LINE_LEN;
-dc_s32_t dc_d_main(dc_s8_t *, dc_s8_t *, dc_u32_t);
+dc_s32_t dc_d_main(dc_s8_t *, string &, dc_u32_t);
 #endif

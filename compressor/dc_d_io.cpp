@@ -232,7 +232,7 @@ EXIT:
 }
 
 void
-write_to_file(vector<string> &inp_seqs, dc_s8_t *output, dc_u32_t output_offset)
+write_to_file(vector<string> &inp_seqs, string &output)
 {
     dc_s8_t write_buf[LINE_LEN + 2];
     write_buf[LINE_LEN] = '\n';
@@ -248,8 +248,9 @@ write_to_file(vector<string> &inp_seqs, dc_s8_t *output, dc_u32_t output_offset)
         {
             strncpy(write_buf, inp_seqs[i].c_str() + idx, LINE_LEN);
             //fputs(write_buf, fout);
-            memcpy(output + output_offset, write_buf, strlen(write_buf));
-            output_offset += strlen(write_buf);
+            //memcpy(output + output_offset, write_buf, strlen(write_buf));
+            //output_offset += strlen(write_buf);
+            output += write_buf;
             idx += LINE_LEN;
         }
 
@@ -262,8 +263,9 @@ write_to_file(vector<string> &inp_seqs, dc_s8_t *output, dc_u32_t output_offset)
     {
         strncpy(write_buf, inp_seqs[i].c_str() + idx, LINE_LEN);
         //fputs(write_buf, fout);
-        memcpy(output + output_offset, write_buf, strlen(write_buf));
-        output_offset += strlen(write_buf);
+        //memcpy(output + output_offset, write_buf, strlen(write_buf));
+        //output_offset += strlen(write_buf);
+        output += write_buf;
         idx += LINE_LEN;
     }
 
@@ -274,8 +276,9 @@ write_to_file(vector<string> &inp_seqs, dc_s8_t *output, dc_u32_t output_offset)
         write_buf[tmp_len] = '\n';
         write_buf[tmp_len + 1] = '\0';
         //fputs(write_buf, fout);
-        memcpy(output + output_offset, write_buf, strlen(write_buf));
-        output_offset += strlen(write_buf);
+        //memcpy(output + output_offset, write_buf, strlen(write_buf));
+        //output_offset += strlen(write_buf);
+        output += write_buf;
     }
 }
 

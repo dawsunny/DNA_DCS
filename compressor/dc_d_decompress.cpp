@@ -97,7 +97,7 @@ make_orig_seq(const dc_s8_t *s0, dc_s32_t len0, dc_s8_t *dstr, dc_s32_t dstr_len
 
 //decompress from cfile_name into output_name
 dc_s32_t
-decompress_file(const dc_s8_t *cfile_name, dc_s8_t *output)
+decompress_file(const dc_s8_t *cfile_name, string &output)
 {
     dc_s32_t rc = 0;
     DC_PRINT("decompress_file enter:\n");
@@ -168,8 +168,9 @@ decompress_file(const dc_s8_t *cfile_name, dc_s8_t *output)
     head_line[head_line_len]     = '\n';
     head_line[head_line_len + 1] = '\0';
     //fputs(head_line, fout);
-    memcpy(output + output_offset, head_line, strlen(head_line));
-    output_offset += strlen(head_line);
+    output = head_line;
+    //memcpy(output + output_offset, head_line, strlen(head_line));
+    //output_offset += strlen(head_line);
 
     write_buf[LINE_LEN] = '\n', write_buf[LINE_LEN + 1] = '\0';
     while( fread(&link_info, sizeof(dc_link_t), 1, fin) == 1 )   //1st, read a link struct
@@ -256,7 +257,8 @@ decompress_file(const dc_s8_t *cfile_name, dc_s8_t *output)
         inp_seqs[seq_no].insert(inp_seqs[seq_no].begin() + base_no, nCnt, 'N');
     }
 
-    write_to_file(inp_seqs, output, output_offset);
+    //write_to_file(inp_seqs, output, output_offset);
+    write_to_file(inp_seqs, output);
 
     if( fin_r != NULL )
     {
@@ -267,6 +269,7 @@ decompress_file(const dc_s8_t *cfile_name, dc_s8_t *output)
         {
             fread(&c, sizeof(char), 1, fin_r);
 
+            output = output.substr(0, base_pos) + "N" + output.substr(base_pos);
             //fseek(fout, base_pos, SEEK_SET);
             //fputc(c, fout);
         }
@@ -311,7 +314,7 @@ EXIT:
 
 //check whether the path is a file or dir
 dc_s32_t
-analyze_path(dc_s8_t *input_path, dc_s8_t *output)
+analyze_path(dc_s8_t *input_path, string& output)
 {
 	dc_s32_t rc = 0;
 	DC_PRINT("analyze_path enter:\n");
