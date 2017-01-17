@@ -69,7 +69,7 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 	}
 
 	comp_file.Close();
-	FastqFile.Close();
+	FastqFile.Close(NULL, rec_no);
 
 	file_pos      = FastqFile.GetFilePos();
 	comp_file_pos = comp_file.GetFilePos();
@@ -94,9 +94,9 @@ bool compress(char *data, uint32 datasize, char *out_file_name, bool try_lz, uin
 }
 
 //****************************************************************************************
-bool decompress(char *in_file_name, char *out_file_name)
+bool decompress(char *in_file_name, char *output_data)
 {
-	if(!FastqFile.Create(out_file_name))
+	if(!FastqFile.Create(output_data))
 		return false;
 
 	CFastqRecord rec;
@@ -112,6 +112,8 @@ bool decompress(char *in_file_name, char *out_file_name)
 	int64 file_pos;
 	int64 comp_file_pos;
 
+    int64 offset = 0;
+    
 	while(comp_file.ReadRecord(rec))
 	{
 		rec_no++;
@@ -137,10 +139,10 @@ bool decompress(char *in_file_name, char *out_file_name)
 			}
 		}
 
-		FastqFile.WriteRecord(rec);
+		FastqFile.WriteRecord(rec, output_data, offset);
 	}
 
-	FastqFile.Close();
+	FastqFile.Close(output_data, offset);
 	comp_file.Close();
 
 	file_size     = FastqFile.GetFileSize();
@@ -181,10 +183,10 @@ bool extract_record(char *in_file_name, char *out_file_name, uint64 rec_id)
 	int64 comp_file_size = comp_file.GetFileSize();
 
 	comp_file.ExtractRecord(rec, rec_id);
-	FastqFile.WriteRecord(rec);
+	//FastqFile.WriteRecord(rec);
 
-	comp_file.Close();
-	FastqFile.Close();
+	//comp_file.Close();
+	//FastqFile.Close(NULL);
 
 	return true;
 }

@@ -464,7 +464,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     //by bxz
     sprintf(tmp_filename, "%s_%u_%lu", msgp->u.c2s_req.filename, fromid, timestamp);
     filename = tmp_filename;
-    printf("filename: %s\n", tmp_filename);
+    printf("filename: %s, offset: %lu\n", tmp_filename, fileoffset);
     target = (file_md5[0] * 256 + file_md5[1]) % DCS_COMPRESSOR_NUM + 1;
     
     if(finish){
@@ -776,6 +776,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     //msgp->u.s2d_req.chunk_num = total_sha_num;
     msgp->u.s2d_req.chunk_num = 1;  //by bxz
     msgp->u.s2d_req.scsize = bufsize;
+    msgp->u.s2d_req.offset = fileoffset;
 
     req2d->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
     if(req2d->req_iov == NULL){
@@ -901,7 +902,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
         DCS_ERROR("__dcs_write_server reply to client err:%d \n", errno);
         goto EXIT;
     }
-    printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
+    //printf("||||||got msg from client: %s[%d]\n", (dcs_s8_t *)req->req_iov->ak_addr, req->req_iov->ak_len);
     /*
     if (filetype == DCS_FILETYPE_FASTA) {
         printf("got file type: FASTA!\n");
@@ -1888,7 +1889,7 @@ EXIT:
     }
 
 
-    DCS_LEAVE("__dcs_read_server leave \n");
+    DCS_LEAVE("__dcs_delete_server leave \n");
     return rc;
 
 }
@@ -2054,7 +2055,6 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
     }
     printf("8\n");
     
-    /*
     if (filetype == DCS_FILETYPE_FASTA) {
         tmpdata_size = FA_CHUNK_SIZE;
     } else {
@@ -2066,7 +2066,10 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
         rc = errno;
         goto EXIT;
     }
-     */
+    memset(tmpdata, 0, tmpdata_size);
+    printf("data:\n%s[%d]\n", req2d->req_iov->ak_addr, req2d->req_iov->ak_len);
+
+    /*
     tmpdata = (dcs_s8_t *)malloc(reqsize);
     if (tmpdata == NULL) {
         DCS_ERROR("__dcs_read_server malloc for tmpdata error[%d]\n", errno);
@@ -2074,8 +2077,8 @@ dcs_s32_t __dcs_read_server(amp_request_t *req)
         goto EXIT;
     }
     memset(tmpdata, 0, reqsize);
-    memcpy(tmpdata, req2d->req_iov->ak_addr, reqsize);//req2d->req_iov->ak_len);
-    printf("data:\n%s[%d]\n", req2d->req_iov->ak_addr, req2d->req_iov->ak_len);
+     */
+    memcpy(tmpdata, req2d->req_iov->ak_addr, req2d->req_iov->ak_len);
     printf("9\n");
     
 SEND_ACK:
@@ -2106,7 +2109,7 @@ SEND_ACK:
     printf("remote type: %d, remote id: %d\n", req->req_remote_type, req->req_remote_id);
     if (query_result == 1) {
         msgp->u.s2c_reply.offset = fileoffset;
-        msgp->u.s2c_reply.size = reqsize;
+        msgp->u.s2c_reply.size = strlen(tmpdata);
         msgp->ack = 1;
         req->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
         if (req->req_iov == NULL) {
@@ -2116,7 +2119,7 @@ SEND_ACK:
         }
         
         req->req_iov->ak_addr = tmpdata;
-        req->req_iov->ak_len = reqsize;//strlen(tmpdata);
+        req->req_iov->ak_len = strlen(tmpdata);
         req->req_iov->ak_flag = 0;
         req->req_iov->ak_offset = 0;
         req->req_niov = 1;

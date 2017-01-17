@@ -156,6 +156,8 @@ bool CFastqFile::Open(char *data1, uint32 datasize1)
     }
     data = new char[FQ_CHUNK_SIZE];
     dataoffset = 0;
+    //out_data.clear();
+    //out_data = "";
     
     memcpy(data, data1, datasize1);
     datasize = datasize1;
@@ -177,7 +179,26 @@ bool CFastqFile::Open(char *data1, uint32 datasize1)
 // ********************************************************************************************
 bool CFastqFile::Create(char *file_name)
 {
-	if((file = my_fopen(file_name, "wb")) != NULL)
+	//if((file = my_fopen(file_name, "wb")) != NULL)
+    file = NULL;
+    if (io_buffer) {
+        delete[] io_buffer;
+        io_buffer = NULL;
+    }
+    io_buffer = new unsigned char[IO_BUFFER_SIZE];
+    //io_buffer_pos = -1;
+    io_buffer_size = 0;
+    io_eof = false;
+    if (data) {
+        delete[] data;
+        data = NULL;
+    }
+    //data = new char[FQ_CHUNK_SIZE];
+    dataoffset = 0;
+    //out_data.clear();
+    //out_data = "";
+    //cout << "||||||||||||||||||out_data:\n" << out_data << endl;
+    //cout << "||||||||||||||||||out_data size:\n" << out_data.size() << endl;
 		mode = mode_write;
 	io_buffer_pos = 0;
 	file_pos = 0;
@@ -186,19 +207,26 @@ bool CFastqFile::Create(char *file_name)
 }
 
 // ********************************************************************************************
-bool CFastqFile::Close()
+bool CFastqFile::Close(char *output_data, int64& offset)
 {
-	if(!file)
-		return false;
+	//if(!file)
+	//	return false;
 
 	if(mode == mode_write && io_buffer_pos > 0)
 	{
-		fwrite(io_buffer, 1, io_buffer_pos, file);
+		//fwrite(io_buffer, 1, io_buffer_pos, file);
+        //out_data += (char *)io_buffer;
+        memcpy(output_data + offset, (char *)io_buffer, io_buffer_pos);
 		file_size = file_pos;
 	}
-	fclose(file);
+	//fclose(file);
 	file = NULL;
 
+    //memcpy(output_data, out_data.c_str(), out_data.size());
+    //cout << "||||||||||||||||||out_data:\n" << out_data << endl;
+    //cout << "||||||||||||||||||out_data size:\n" << out_data.size() << endl;
+    //out_data.clear();
+    //out_data = "";
 	return true;
 }
 
@@ -218,15 +246,15 @@ bool CFastqFile::ReadRecord(CFastqRecord &rec)
 }
 
 // ********************************************************************************************
-bool CFastqFile::WriteRecord(CFastqRecord &rec)
+bool CFastqFile::WriteRecord(CFastqRecord &rec, char *output_data, int64& offset)
 {
 	if(mode != mode_write)
 		return false;
 
 	UnTransferN(rec);
 
-	return Puts(rec.title, rec.title_len) && Puts(rec.seq, rec.seq_len) &&
-		Puts(rec.plus, rec.plus_len) && Puts(rec.quality, rec.quality_len);
+	return Puts(rec.title, rec.title_len, 1, output_data, offset) && Puts(rec.seq, rec.seq_len, 1, output_data, offset) &&
+		Puts(rec.plus, rec.plus_len, 1, output_data, offset) && Puts(rec.quality, rec.quality_len, 1, output_data, offset);
 }
 
 

@@ -109,7 +109,8 @@ bool CDSRCFile::Close()
 	if(mode == mode_write)
 	{
 		if(rec_count)
-            superblock.Process1(bit_stream, tr, try_lz);
+            superblock.Process(bit_stream, lz_matcher, try_lz);
+            //superblock.Process1(bit_stream, tr, try_lz);
 			//superblock.Process2(bit_stream, lz_matcher, try_lz);
 
 		sb_file_pos.push_back(superblock.sb_file_pos);

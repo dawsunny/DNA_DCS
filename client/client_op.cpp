@@ -768,6 +768,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                 c2s_datainfo.size = strlen(buf);
                 c2s_datainfo.offset = fileoffset;
                 c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+                c2s_datainfo.target_server = target_server;
                 c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
                 memcpy(c2s_datainfo.filename, filename1, strlen(filename1));
                 c2s_datainfo.finish = 0;
@@ -775,6 +776,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
                 if (fileoffset < filesize) {
                     fileoffset++;       //plus the last return character
                 }
+                printf("wq1\n");
                 rc = clt_send_data(filesize, file_md5, c2s_datainfo, buf, threadp);
                 if(rc != 0){
                     DCS_ERROR("__dcs_clt_write_file send data to server err:%d \n", rc);
@@ -796,6 +798,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
             c2s_datainfo.size = strlen(buf);
             c2s_datainfo.offset = fileoffset;
             c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+            c2s_datainfo.target_server = target_server;
             c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
             memcpy(c2s_datainfo.filename, filename1, strlen(filename1));
             c2s_datainfo.finish = 0;
@@ -967,6 +970,7 @@ dcs_s32_t __dcs_clt_write_file(dcs_s8_t *filename, dcs_thread_t *threadp)
         c2s_datainfo.size = rc;
         c2s_datainfo.offset = fileoffset;
         c2s_datainfo.inode = (dcs_u64_t)f_state.st_ino;
+        c2s_datainfo.target_server = target_server;
         c2s_datainfo.timestamp = (dcs_u64_t)f_state.st_mtime;
         c2s_datainfo.finish = 0;
         fileoffset = fileoffset + rc;
@@ -1136,7 +1140,7 @@ SEND_AGAIN:
                         DCS_SERVER, 
                         server_id, 
                         0);
-    DCS_MSG("server_id is %d, client_id is %d, inode is %ld \n"
+    printf("server_id is %d, client_id is %d, inode is %ld \n"
             ,server_id, clt_this_id, c2s_datainfo.inode);
     if(rc < 0){
         DCS_ERROR("clt_send_data amp send err: %d \n", rc);
@@ -1920,8 +1924,12 @@ dcs_s32_t __dcs_clt_read_file(dcs_clt_file_t *clt_file, dcs_thread_t *threadp)
     printf("clt_file->filename: %s[%d]\n", clt_file->filename, strlen(clt_file->filename));
     while(fileoffset < filesize){
         c2s_req.size = bufsize;
-        if(fileoffset + bufsize > filesize)
+        if(fileoffset + bufsize > filesize) {
             c2s_req.size = filesize - fileoffset;
+            if (clt_file->filetype == DCS_FILETYPE_FASTQ && fileoffset > 0) {
+                c2s_req.size++;
+            }
+        }
         printf("bufsize is %d , fileoffset is %ld , filesize is %ld, c2s.reqsize is %d \n", bufsize, fileoffset, filesize, c2s_req.size);
         //c2s_req.inode = inode;
         //c2s_req.timestamp = timestamp;
@@ -2009,9 +2017,9 @@ dcs_s32_t __dcs_clt_read_file(dcs_clt_file_t *clt_file, dcs_thread_t *threadp)
             }
 
             lseek(read_fd, fileoffset, SEEK_SET);
-printf("data:\n%s[%zu]\n", req->req_iov->ak_addr, strlen((dcs_s8_t *)req->req_iov->ak_addr));
-            rc = write(read_fd, req->req_iov->ak_addr, req->req_iov->ak_len);
-            if(rc != req->req_iov->ak_len){
+//printf("data:\n%s[%zu]\n", req->req_iov->ak_addr, strlen((dcs_s8_t *)req->req_iov->ak_addr));
+            rc = write(read_fd, req->req_iov->ak_addr, msgp->u.s2c_reply.size);//req->req_iov->ak_len);
+            if(rc != msgp->u.s2c_reply.size) {// req->req_iov->ak_len){
                 printf("r5.1 \n");
                 printf("rc: %d, ak_len: %d\n", rc, req->req_iov->ak_len);
                 DCS_ERROR("__dcs_clt_read_file write data err: %d \n", errno);
@@ -2020,11 +2028,20 @@ printf("data:\n%s[%zu]\n", req->req_iov->ak_addr, strlen((dcs_s8_t *)req->req_io
             else{
                 printf("r5.2 \n");
                 printf("rc: %d, ak_len: %d\n", rc, req->req_iov->ak_len);
-                
+                printf("fileoffset: %lu\n", fileoffset);
+
                 fileoffset = fileoffset + rc;
+                if (clt_file->filetype == DCS_FILETYPE_FASTQ) {
+                    if (fileoffset + 1 < filesize) {
+                        //lseek(read_fd, fileoffset, SEEK_SET);
+                        //write(read_fd, "\n", 1);
+                        //fileoffset++;
+                    }
+                }
                 rc = 0;
             }
         printf("r6 \n");
+            printf("fileoffset: %lu\n", fileoffset);
         }
 
 CONTINUE:

@@ -37,6 +37,10 @@
 #include "dc_global.h"
 #include "dc_io.h"
 
+#include <map>
+#include <string>
+#include <iostream>
+using namespace std;
 
 dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
 {
@@ -44,6 +48,9 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
     
     struct timeval start_time, end_time;
     struct timeval glo_start_time, glo_end_time;
+    
+    map<string, compressor_hash_t>::iterator it;
+    map<dcs_u64_t, string>::iterator it1;
 
     DCS_ENTER("compressor enter \n");
 
@@ -153,6 +160,29 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
             printf("done.\n");
         }
     }
+    
+    printf("----------------------\n");
+    printf("fasta map info\n");
+    for (it = compressor_location_fa.begin(); it != compressor_location_fa.end(); ++it) {
+        cout << it->first << endl;
+        cout << "\t" << it->second.chunk_num << endl;
+        cout << "\t" << it->second.location << endl;
+        for (it1 = it->second.off_loc.begin(); it1 != it->second.off_loc.end(); ++it1) {
+            cout << "\t\t" << it1->first << "\t" << it1->second << endl;
+        }
+    }
+    
+    printf("----------------------\n");
+    printf("fastq map info\n");
+    for (it = compressor_location_fq.begin(); it != compressor_location_fq.end(); ++it) {
+        cout << it->first << endl;
+        cout << "\t" << it->second.chunk_num << endl;
+        cout << "\t" << it->second.location << endl;
+        for (it1 = it->second.off_loc.begin(); it1 != it->second.off_loc.end(); ++it1) {
+            cout << "\t\t" << it1->first << "\t" << it1->second << endl;
+        }
+    }
+    
     rc = __dcs_create_compressor_thread();
     if(rc != 0){
         DCS_ERROR("main __dcs_create_compressor_thread \n");

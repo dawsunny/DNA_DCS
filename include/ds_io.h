@@ -133,11 +133,12 @@ class CFastqFile {
     char *data;
     uint32 datasize;
     uint32 dataoffset;
+    //string out_data;
 
 	inline int32 Getc();
 	inline void UnGetc();
-	inline bool Putc(const unsigned char c);
-	inline bool Puts(const unsigned char *str, const uint32 len, bool eol = true);
+	inline bool Putc(const unsigned char c, char *, int64&);
+	inline bool Puts(const unsigned char *str, const uint32 len, bool eol, char *, int64&);
 
 	bool ReadTitle(CFastqRecord &rec);
 	bool ReadPlus(CFastqRecord &rec);
@@ -169,9 +170,9 @@ public:
 
 	bool Open(char *data, uint32);
 	bool Create(char *file_name);
-	bool Close();
+	bool Close(char *output_data, int64&);
 	bool ReadRecord(CFastqRecord &rec);
-	bool WriteRecord(CFastqRecord &rec);
+	bool WriteRecord(CFastqRecord &rec, char *, int64&);
 	bool Eof() {return io_eof;}
 	int64 GetFileSize() {return file_size;}
 	int64 GetFilePos() {return file_pos;}
@@ -227,11 +228,14 @@ void CFastqFile::UnGetc()
 }
 
 // ********************************************************************************************
-bool CFastqFile::Putc(const unsigned char c)
+bool CFastqFile::Putc(const unsigned char c, char *output_data, int64& offset)
 {
 	if(io_buffer_pos == IO_BUFFER_SIZE)
 	{
-		fwrite(io_buffer, 1, IO_BUFFER_SIZE, file);
+		//fwrite(io_buffer, 1, IO_BUFFER_SIZE, file);
+        //out_data += (char *)io_buffer;
+        memcpy(output_data + offset, (char *)io_buffer, IO_BUFFER_SIZE);
+        offset += IO_BUFFER_SIZE;
 		io_buffer_pos = 0;
 	}
 	io_buffer[io_buffer_pos++] = c;
@@ -241,12 +245,12 @@ bool CFastqFile::Putc(const unsigned char c)
 }
 
 // ********************************************************************************************
-bool CFastqFile::Puts(const unsigned char *str, const uint32 len, bool eol)
+bool CFastqFile::Puts(const unsigned char *str, const uint32 len, bool eol, char *output_data, int64& offset)
 {
 	for(uint32 i = 0; i < len; ++i)
-		Putc(str[i]);
+		Putc(str[i], output_data, offset);
 	if(eol)
-		Putc('\n');
+		Putc('\n', output_data, offset);
 
 	return true;
 }
