@@ -51,12 +51,14 @@ dcs_u32_t compressor_location_fq_cnt = 0;
 //dcs_u32_t compressor_location_fq_cnt_local = 0;
 
 //by bxz
-dcs_s32_t do_write_map(map<string, string> &compressor_location, dcs_u32_t filetype) {
+dcs_s32_t do_write_map(map<string, compressor_hash_t> &compressor_location, dcs_u32_t filetype) {
     dcs_s32_t rc = 0;
     DCS_MSG("do_write_map enter\n");
     FILE *filep = NULL;
     dcs_u32_t tmp = 0;
-    map<string, string>::iterator it;
+    dcs_u64_t tmp64 = 0;
+    map<string, compressor_hash_t>::iterator it;
+    map<dcs_u64_t, string>::iterator it1;
     if (filetype == DCS_FILETYPE_FASTA) {
         if ((filep = fopen(FASTA_MAP_PATH, "wb")) == NULL) {
             DCS_ERROR("do_write_map open FASTA_MAP_PATH error\n");
@@ -74,6 +76,7 @@ dcs_s32_t do_write_map(map<string, string> &compressor_location, dcs_u32_t filet
         rc = -1;
         goto EXIT;
     }
+    
     tmp = compressor_location.size();
     if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
         DCS_ERROR("do_write_map write size error\n");
@@ -94,17 +97,51 @@ dcs_s32_t do_write_map(map<string, string> &compressor_location, dcs_u32_t filet
             goto EXIT;
         }
         
-        tmp = it->second.size();
+        tmp = it->second.chunk_num;
         if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
-            DCS_ERROR("do_write_map write the size of[%s] error\n", it->second.c_str());
+            DCS_ERROR("do_write_map write the chunk_num[%s] error\n", it->second.chunk_num);
             rc = -1;
             goto EXIT;
         }
-        if ((fwrite(it->second.c_str(), 1, tmp, filep)) != tmp) {
-            DCS_ERROR("do_write_map write [%s] error\n", it->second.c_str());
+        tmp = it->second.location.size();
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write the size of[%s] error\n", it->second.location.c_str());
+            rc = -1;
+            goto EXIT;
+        }
+        if ((fwrite(it->second.location.c_str(), 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_write_map write [%s] error\n", it->second.location.c_str());
             rc = -1;
             goto EXIT;
         };
+        
+        tmp = it->second.off_loc.size();
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write the size of off_loc error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        
+        for (it1 = it->second.off_loc.begin(); it1 != it->second.off_loc.end(); ++it1) {
+            tmp64 = it1->first;
+            if ((fwrite(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+                DCS_ERROR("do_write_map write off_loc.first error\n");
+                rc = -1;
+                goto EXIT;
+            }
+            
+            tmp = it1->second.size();
+            if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+                DCS_ERROR("do_write_map write off_loc.second.size error\n");
+                rc = -1;
+                goto EXIT;
+            }
+            if ((fwrite(it1->second.c_str(), 1, tmp, filep)) != tmp) {
+                DCS_ERROR("do_write_map write off_loc.second error\n");
+                rc = -1;
+                goto EXIT;
+            }
+        }
     }
 EXIT:
     if (filep != NULL) {
@@ -114,14 +151,16 @@ EXIT:
     return rc;
 }
 
-dcs_s32_t do_read_map(map<string, string>& compressor_location, dcs_u32_t filetype) {
+dcs_s32_t do_read_map(map<string, compressor_hash_t>& compressor_location, dcs_u32_t filetype) {
     dcs_s32_t rc = 0;
     DCS_MSG("do_read_map enter\n");
     FILE *filep = NULL;
-    dcs_u32_t size = 0, tmp = 0, i = 0;
-    char *item1 = (char *)malloc(SHA_LEN + 1);
-    char *item2 = (char *)malloc(SHA_LEN + 1);
+    dcs_u32_t size = 0, tmp = 0, i = 0, size1, j;
+    dcs_u64_t tmp64 = 0;
+    char *item1 = (char *)malloc(MD5_STR_LEN + 1);
+    char *item2 = (char *)malloc(PATH_LEN);
     string str1 = "", str2 = "";
+    map<dcs_u64_t, string> tmp_map;
     compressor_location.clear();
     if (filetype == DCS_FILETYPE_FASTA) {
         if ((filep = fopen(FASTA_MAP_PATH, "rb")) == NULL) {
@@ -151,26 +190,62 @@ dcs_s32_t do_read_map(map<string, string>& compressor_location, dcs_u32_t filety
             rc = -1;
             goto EXIT;
         }
-        memset(item1, 0, SHA_LEN + 1);
+        memset(item1, 0, MD5_STR_LEN + 1);
         if ((fread(item1, 1, tmp, filep)) != tmp) {
             DCS_ERROR("do_read_map read the first string error\n");
             rc = -1;
             goto EXIT;
         }
         str1= item1;
+        
         if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
             DCS_ERROR("do_read_map read the second size error\n");
             rc = -1;
             goto EXIT;
         }
-        memset(item2, 0, SHA_LEN + 1);
-        if ((fread(item2, 1, tmp, filep)) != tmp) {
-            DCS_ERROR("do_read_map read the second string error\n");
+        compressor_location[str1].chunk_num = tmp;
+        
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_read_map read location's size error\n");
             rc = -1;
             goto EXIT;
         }
-        str2 = item2;
-        compressor_location[str1] = str2;
+        memset(item2, 0, PATH_LEN);
+        if ((fread(item2, 1, tmp, filep)) != tmp) {
+            DCS_ERROR("do_read_map read location error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        compressor_location[str1].location = item2;
+        
+        if (fread(&size1, sizeof(dcs_u32_t), 1, filep) != 1) {
+            DCS_ERROR("do_read_map read off_loc's size error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        tmp_map.clear();
+        
+        for (j = 0; j < size1; ++j) {
+            if ((fread(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+                DCS_ERROR("do_read_map read off_loc.first error\n");
+                rc = -1;
+                goto EXIT;
+            }
+            
+            if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+                DCS_ERROR("do_read_map read off_loc.second's size error\n");
+                rc = -1;
+                goto EXIT;
+            }
+            memset(item2, 0, PATH_LEN);
+            if ((fread(item2, 1, tmp, filep)) != tmp) {
+                DCS_ERROR("do_read_map read off_loc.second error\n");
+                rc = -1;
+                goto EXIT;
+            }
+            tmp_map[tmp64] = item2;
+        }
+        compressor_location[str1].off_loc = tmp_map;
     }
 EXIT:
     if (filep != NULL) {
@@ -211,7 +286,7 @@ dcs_s32_t get_location_fa(dcs_s8_t *res, dcs_s8_t *md5, dcs_u32_t optype) {
         for (int i = 0, j = strstr.size() - 1; i < j; i++, j--) {
             swap(strstr[i], strstr[j]);
         }
-        compressor_location_fa_cnt++;
+        //compressor_location_fa_cnt++;
         compressor_location_fa[file_md5].location = strstr;
         //do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
         pthread_mutex_unlock(&compressor_location_fa_lock);
@@ -824,7 +899,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     finish = msgp->u.s2d_req.finish;
     memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);   //bxz
     file_md5 = file_md5_tmp;
-    printf("md5: %s\n", file_md5_tmp);
+    printf("filetype: %d, md5: %s\n", filetype, file_md5_tmp);
     compressor_hash_t hash_tmp;
 
     if (finish) {
@@ -1097,12 +1172,16 @@ dcs_s32_t __dcs_compressor_write_finish(dcs_s8_t *md5, dcs_u32_t filetype, amp_r
     if (filetype == DCS_FILETYPE_FASTA) {
         pthread_mutex_lock(&compressor_location_fa_lock);
         compressor_location_fa_cnt++;
+        do_write_map(compressor_location_fa, filetype);
         pthread_mutex_unlock(&compressor_location_fa_lock);
     } else {
         pthread_mutex_lock(&compressor_location_fq_lock);
         compressor_location_fq_cnt++;
+        do_write_map(compressor_location_fq, filetype);
         pthread_mutex_unlock(&compressor_location_fq_lock);
     }
+    
+    printf("~~~~~~~~~~~~~~compressor write finish IN![%d]\n", filetype);
     
     size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
     repmsgp = (amp_message_t *)malloc(size);

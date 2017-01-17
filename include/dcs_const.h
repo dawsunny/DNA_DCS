@@ -112,6 +112,7 @@ enum dcs_comp_type{
 #define COMPRESSOR_BLOOM_PATH	CONF_DIR"/compressor/bf"
 #define MAP_FILE_PATH1 		CONF_DIR"/server/mapfile1"
 #define MAP_FILE_PATH2 		CONF_DIR"/server/mapfile2"
+#define SERVER_MAP_PATH     CONF_DIR"/server/server.map"
 #define DATA_CONTAINER_PATH 	CONF_DIR"/compressor/data"
 #define FASTA_CONTAINER_PATH 	CONF_DIR"/compressor/data/fa"
 #define FASTQ_CONTAINER_PATH 	CONF_DIR"/compressor/data/fq"

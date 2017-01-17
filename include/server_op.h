@@ -3,6 +3,9 @@
 #ifndef __SERVER_OP_H_
 #define __SERVER_OP_H_
 #include "dcs_type.h"
+#include <map>
+#include <string>
+using namespace std;
 /*server process req will analyze the msg to determine operation type */
 dcs_s32_t __dcs_server_process_req(amp_request_t *req, 
                                        dcs_thread_t *threadp);
@@ -32,7 +35,10 @@ dcs_s32_t __dcs_read_finish(dcs_u64_t inode,
 /*send finish reply to client*/
 dcs_u32_t __dcs_server_write_finish(dcs_s8_t *,
                                     dcs_u32_t,
+                                    dcs_u32_t,
                                         amp_request_t *req);
+dcs_s32_t __dcs_server_write_mapinfo();
+dcs_s32_t __dcs_server_read_mapinfo();
 /*collect disk usage info from compressor*/
 dcs_s32_t server_collect_diskinfo(); 
 /*init the disk info*/
@@ -42,5 +48,6 @@ dcs_s32_t __dcs_server_stateless_routing(dcs_u8_t *sha);
 
 dcs_s32_t __dcs_delete_server(amp_request_t *);
 
-
+extern map<string, server_hash_t> server_table;
+extern pthread_mutex_t server_table_lock;
 #endif 

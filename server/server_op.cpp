@@ -43,6 +43,173 @@ pthread_mutex_t diskinfo_lock = PTHREAD_MUTEX_INITIALIZER;
 map<string, server_hash_t> server_table;
 pthread_mutex_t server_table_lock = PTHREAD_MUTEX_INITIALIZER;
 
+dcs_s32_t __dcs_server_write_mapinfo() {
+    dcs_s32_t rc = 0;
+    FILE *filep = NULL;
+    dcs_u32_t tmp = 0;
+    dcs_u64_t tmp64 = 0;
+    map<string, server_hash_t>::iterator it;
+    DCS_ENTER("__dcs_server_write_mapinfo enter\n");
+    if ((filep = fopen(SERVER_MAP_PATH, "wb")) == NULL) {
+        DCS_ERROR("__dcs_server_write_mapinfo open SERVER_MAP_PATH error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    tmp = server_table.size();
+    if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+        DCS_ERROR("__dcs_server_write_mapinfo write server table's size error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    
+    for (it = server_table.begin(); it != server_table.end(); ++it) {
+        tmp = it->first.size();
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.first.size error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        
+        if ((fwrite(it->first.c_str(), 1, tmp, filep)) != tmp) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.first error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        
+        tmp = it->second.filetype;
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.filetype error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        tmp = it->second.compressor_id;
+        if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.compressor_id error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        tmp64 = it->second.filesize;
+        if ((fwrite(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.filesize error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        tmp64 = it->second.inode;
+        if ((fwrite(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.inode error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        tmp64 = it->second.timestamp;
+        if ((fwrite(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.timestamp error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        if ((fwrite(it->second.md5, 1, 33, filep)) != 33) {
+            DCS_ERROR("__dcs_server_write_mapinfo write server_table.second.timestamp error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    }
+    
+EXIT:
+    if (filep) {
+        fclose(filep);
+    }
+    DCS_LEAVE("__dcs_server_write_mapinfo leave\n");
+    return rc;
+}
+dcs_s32_t __dcs_server_read_mapinfo() {
+    dcs_s32_t rc = 0;
+    FILE *filep = NULL;
+    dcs_u32_t tmp = 0, i = 0, size = 0;
+    dcs_u64_t tmp64 = 0;
+    dcs_s8_t filename[PATH_LEN];//, tmp_md5[33];
+    string str = "";
+    server_table.clear();
+    
+    DCS_ENTER("__dcs_server_read_mapinfo enter\n");
+
+    
+    if ((filep = fopen(SERVER_MAP_PATH, "rb")) == NULL) {
+        DCS_ERROR("__dcs_server_read_mapinfo open SERVER_MAP_PATH error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    
+    if ((fread(&size, sizeof(dcs_u32_t), 1, filep)) != 1) {
+        DCS_ERROR("__dcs_server_read_mapinfo read server table's size error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    
+    for (i = 0; i < size; ++i) {
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read server_table.first's size error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        memset(filename, 0, PATH_LEN);
+        if ((fread(filename, 1, tmp, filep)) != tmp) {
+            DCS_ERROR("__dcs_server_read_mapinfo read server_table.first error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        str = filename;
+        
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read filetype error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        server_table[str].filetype = tmp;
+        
+        if ((fread(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read compressor_id error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        server_table[str].compressor_id = tmp;
+        
+        if ((fread(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read filesize error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        server_table[str].filesize = tmp64;
+        
+        if ((fread(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read inode error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        server_table[str].inode = tmp64;
+        
+        if ((fread(&tmp64, sizeof(dcs_u64_t), 1, filep)) != 1) {
+            DCS_ERROR("__dcs_server_read_mapinfo read timestamp error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        server_table[str].timestamp = tmp64;
+        
+        //memset(tmp_md5, 0, 33);
+        if ((fread(server_table[str].md5, 1, 33, filep)) != 33) {
+            DCS_ERROR("__dcs_server_read_mapinfo read md5 error\n");
+            rc = -1;
+            goto EXIT;
+        }
+        //memcpy(server_table[str].md5, tmp_md5, 33);
+    }
+    
+EXIT:
+    if (filep) {
+        fclose(filep);
+    }
+    DCS_LEAVE("__dcs_server_read_mapinfo leave\n");
+    return rc;
+}
+
 /*init the disk info*/
 dcs_s32_t __dcs_server_init_diskinfo()
 {
@@ -302,7 +469,7 @@ dcs_s32_t __dcs_write_server(amp_request_t *req, dcs_thread_t *threadp)
     
     if(finish){
         DCS_MSG("__dcs_write_server file %ld write finish \n", fileinode);
-        rc = __dcs_server_write_finish(file_md5, target, req);
+        rc = __dcs_server_write_finish(file_md5, filetype, target, req);
         goto EXIT;
     }
 
@@ -1143,6 +1310,7 @@ EXIT:
 /*when a file is been compressed, write back its mapinfo
  * and send reply msg back*/
 dcs_u32_t __dcs_server_write_finish(dcs_s8_t *md5,
+                                    dcs_u32_t filetype,
                                     dcs_u32_t target_compressor,
                                         amp_request_t *req)
 {
@@ -1158,6 +1326,7 @@ dcs_u32_t __dcs_server_write_finish(dcs_s8_t *md5,
     amp_message_t *repmsgp2d = NULL;
 
     DCS_ENTER("__dcs_server_write_finish enter \n");
+    printf("~~~~~~~~~~~~~~~server write finish IN\n");
 
     //write back file mapping info
     /*
@@ -1167,6 +1336,10 @@ dcs_u32_t __dcs_server_write_finish(dcs_s8_t *md5,
         goto EXIT;
     }
      */
+    pthread_mutex_lock(&server_table_lock);
+    __dcs_server_write_mapinfo();
+    pthread_mutex_unlock(&server_table_lock);
+    
     //send finish msg to compressor
     rc = __amp_alloc_request(&req2d);
     if (rc < 0) {
@@ -1183,6 +1356,7 @@ dcs_u32_t __dcs_server_write_finish(dcs_s8_t *md5,
     memset(reqmsgp2d, 0, size);
     msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp2d + AMP_MESSAGE_HEADER_LEN);
     msgp->size = size;
+    msgp->filetype = filetype;
     msgp->optype = DCS_WRITE;
     msgp->msg_type = is_req;
     msgp->fromtype = DCS_SERVER;
