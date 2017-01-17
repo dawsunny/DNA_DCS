@@ -77,6 +77,21 @@ dcs_s32_t do_write_map(map<string, compressor_hash_t> &compressor_location, dcs_
         goto EXIT;
     }
     
+    if (filetype == DCS_FILETYPE_FASTA) {
+        if ((fwrite(&compressor_location_fa_cnt, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write compressor_location_fa_cnt error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else {
+        if ((fwrite(&compressor_location_fq_cnt, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_write_map write compressor_location_fq_cnt error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    }
+    
+    
     tmp = compressor_location.size();
     if ((fwrite(&tmp, sizeof(dcs_u32_t), 1, filep)) != 1) {
         DCS_ERROR("do_write_map write size error\n");
@@ -179,6 +194,21 @@ dcs_s32_t do_read_map(map<string, compressor_hash_t>& compressor_location, dcs_u
         rc = -1;
         goto EXIT;
     }
+    
+    if (filetype == DCS_FILETYPE_FASTA) {
+        if ((fread(&compressor_location_fa_cnt, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_read_map read compressor_location_fa_cnt error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    } else {
+        if ((fread(&compressor_location_fq_cnt, sizeof(dcs_u32_t), 1, filep)) != 1) {
+            DCS_ERROR("do_read_map read compressor_location_fq_cnt error\n");
+            rc = -1;
+            goto EXIT;
+        }
+    }
+    
     if ((fread(&size, sizeof(dcs_u32_t), 1, filep)) != 1) {
         DCS_ERROR("do_read_map read size error\n");
         rc = -1;

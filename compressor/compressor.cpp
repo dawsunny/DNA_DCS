@@ -135,7 +135,7 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
     } else {
         pthread_mutex_lock(&compressor_location_fa_lock);
         rc = do_read_map(compressor_location_fa, DCS_FILETYPE_FASTA);
-        compressor_location_fa_cnt = compressor_location_fa.size();
+        //compressor_location_fa_cnt = compressor_location_fa.size();
         pthread_mutex_unlock(&compressor_location_fa_lock);
         if (rc != 0) {
             DCS_ERROR("read fasta map info error\n");
@@ -150,7 +150,7 @@ dcs_s32_t main(dcs_s32_t argc, dcs_s8_t **argv)
     } else {
         pthread_mutex_lock(&compressor_location_fq_lock);
         rc = do_read_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
-        compressor_location_fq_cnt = compressor_location_fq.size();
+        //compressor_location_fq_cnt = compressor_location_fq.size();
        // compressor_location_fq_cnt_local = 0;
         pthread_mutex_unlock(&compressor_location_fq_lock);
         if (rc != 0) {
