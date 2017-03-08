@@ -600,7 +600,160 @@ dcs_s32_t __dcs_compressor_upload(amp_request_t *req){
 EXIT:
     return rc;
 }
-dcs_s32_t __dcs_compressor_delete(amp_request_t *req)
+
+//bxz
+dcs_s32_t __dcs_compressor_delete(amp_request_t *req) {
+    dcs_s32_t rc = 0;
+    dcs_u32_t size = 0;
+    dcs_u32_t server_id;
+    dcs_msg_t *msgp = NULL;
+    amp_message_t *repmsgp = NULL;
+    dcs_s8_t file_md5_tmp[MD5_STR_LEN + 1];
+    string file_md5;
+    dcs_u32_t filetype;
+    map<string, compressor_hash_t>::iterator it;
+    dcs_s8_t query_result = 0;
+    DIR *dp = NULL;
+    struct dirent *entry = NULL;
+    dcs_s8_t filename[PATH_LEN];
+    dcs_s8_t dirname[PATH_LEN];
+    memset(dirname, 0, PATH_LEN);
+    memset(filename, 0, PATH_LEN);
+    
+    DCS_ENTER("__dcs_compressor_delete enter\n");
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)req->req_msg + AMP_MESSAGE_HEADER_LEN);
+    memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);
+    filetype = msgp->u.s2d_req.filetype;
+    server_id = msgp->fromid;
+    file_md5 = file_md5_tmp;
+    
+    if (filetype == DCS_FILETYPE_FASTA) {
+        memcpy(dirname, FASTA_CONTAINER_PATH, strlen(FASTA_CONTAINER_PATH));
+        dirname[strlen(dirname)] = '/';
+        pthread_mutex_lock(&compressor_location_fa_lock);
+        if ((it = compressor_location_fa.find(file_md5)) != compressor_location_fa.end()) {
+            query_result = 1;
+            memcpy(dirname + strlen(dirname), it->second.location.c_str(), it->second.location.size());
+            compressor_location_fa.erase(it);
+            do_write_map(compressor_location_fa, DCS_FILETYPE_FASTA);
+        }
+        pthread_mutex_unlock(&compressor_location_fa_lock);
+    } else {
+        memcpy(dirname, FASTQ_CONTAINER_PATH, strlen(FASTQ_CONTAINER_PATH));
+        dirname[strlen(dirname)] = '/';
+        pthread_mutex_lock(&compressor_location_fq_lock);
+        if ((it = compressor_location_fq.find(file_md5)) != compressor_location_fq.end()) {
+            query_result = 1;
+            memcpy(dirname + strlen(dirname), it->second.location.c_str(), it->second.location.size());
+            compressor_location_fq.erase(it);
+            do_write_map(compressor_location_fq, DCS_FILETYPE_FASTQ);
+        }
+        pthread_mutex_unlock(&compressor_location_fq_lock);
+    }
+    
+    if (query_result == 1) {
+        printf("dirname: %s\n", dirname);
+        if (access(dirname, 0)) {
+            DCS_ERROR("__dcs_compressor_delete cannot access dir %s\n", dirname);
+            rc = -1;
+            goto EXIT;
+        }
+        dp = opendir(dirname);
+        if (dp == NULL) {
+            DCS_ERROR("__dcs_compressor_delete open dir %s error\n", dirname);
+            rc = -1;
+            goto EXIT;
+        }
+        while ((entry = readdir(dp)) != NULL) {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                continue;
+            }
+            memset(filename, 0, PATH_LEN);
+            memcpy(filename, dirname, strlen(dirname));
+            if (filename[strlen(filename) - 1] != '/') {
+                filename[strlen(filename)] = '/';
+            }
+            memcpy(filename + strlen(filename), entry->d_name, strlen(entry->d_name));
+            remove(filename);
+        }
+        closedir(dp);
+        rmdir(dirname);
+    }
+    
+    //send ack
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    repmsgp = (amp_message_t *)malloc(size);
+    if (repmsgp == NULL) {
+        DCS_ERROR("__dcs_compressor_delete malloc for repmsgp error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    memset(repmsgp, 0, size);
+    memcpy(repmsgp, req->req_msg, AMP_MESSAGE_HEADER_LEN);
+    if (req->req_msg) {
+        free(req->req_msg);
+        req->req_msg = NULL;
+    }
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->msg_type = is_rep;
+    msgp->size = size;
+    msgp->fromtype = DCS_NODE;
+    msgp->fromid = compressor_this_id;
+    
+    msgp->filesize = 0;
+    msgp->inode = 0;
+    msgp->timestamp = 0;
+    if (query_result == 1) {
+        msgp->ack = 1;
+        printf("|||||deleted!~~~~\n");
+    } else {
+        msgp->ack = 0;
+        printf("|||||not deleted!~~~~~\n");
+    }
+    req->req_type = AMP_REPLY | AMP_MSG;
+    req->req_reply = repmsgp;
+    req->req_replylen = size;
+    req->req_need_ack = 0;
+    req->req_resent = 0;
+    
+    rc = amp_send_sync(compressor_comp_context, req, DCS_SERVER, server_id, 0);
+    if (rc != 0) {
+        DCS_ERROR("__dcs_compressor_delete send ack error\n");
+        goto EXIT;
+    }
+    
+EXIT:
+    if (repmsgp) {
+        free(repmsgp);
+        repmsgp = NULL;
+    }
+    if (req->req_iov) {
+        __compressor_freebuf(req->req_niov, req->req_iov);
+        free(req->req_iov);
+        req->req_iov = NULL;
+    }
+    if (req) {
+        __amp_free_request(req);
+    }
+    
+    //
+    printf("--------fa table----------\n");
+    for (it = compressor_location_fa.begin(); it != compressor_location_fa.end(); ++it) {
+        cout << it->first << endl;
+    }
+    printf("--------fq table----------\n");
+    for (it = compressor_location_fq.begin(); it != compressor_location_fq.end(); ++it) {
+        cout << it->first << endl;
+    }
+    
+    DCS_LEAVE("__dcs_compressor_delete leave\n");
+    return rc;
+}
+
+
+dcs_s32_t __dcs_compressor_delete1(amp_request_t *req)
 {
     dcs_s32_t rc = 0;
     dcs_s32_t chunk_num = 0;
@@ -933,7 +1086,7 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
     memcpy(file_md5_tmp, msgp->md5, MD5_STR_LEN + 1);   //bxz
     file_md5 = file_md5_tmp;
     printf("filetype: %d, md5: %s, offset: %lu\n", filetype, file_md5_tmp, offset);
-    compressor_hash_t hash_tmp;
+    //compressor_hash_t hash_tmp;
 
     if (finish) {
         rc = __dcs_compressor_write_finish(file_md5_tmp, filetype, req);
@@ -1007,10 +1160,12 @@ dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp)
             goto EXIT;
         } else {
             pthread_mutex_lock(&compressor_location_fa_lock);
-            hash_tmp.chunk_num = 1;
-            hash_tmp.location = output_name;
-            hash_tmp.off_loc[0] = output_name;
-            compressor_location_fa[file_md5] = hash_tmp;
+            //hash_tmp.chunk_num = 1;
+            //hash_tmp.location = compressor_location_fa[file_md5].location;
+            //hash_tmp.off_loc[0] = output_name;
+            //compressor_location_fa[file_md5] = hash_tmp;
+            compressor_location_fa[file_md5].chunk_num = 1;
+            compressor_location_fa[file_md5].off_loc[0] = output_name;
             //cout << compressor_location_fa[file_md5].off_loc[0] << endl;
             for(it = compressor_location_fa.begin(); it != compressor_location_fa.end(); ++it) {
                 cout << it->first << endl;

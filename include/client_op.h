@@ -37,8 +37,10 @@ dcs_s32_t __dcs_clt_finish_msg(dcs_u64_t, dcs_s8_t *, dcs_c2s_req_t c2s_datainfo
 dcs_s32_t __client_send_finish_msg(dcs_s8_t *, dcs_u32_t, dcs_thread_t *);
 /*add to dir queue*/
 dcs_s32_t add_to_dirqueue(dcs_s8_t *dirpath);
-dcs_s32_t __dcs_clt_list(dcs_s8_t *path);
+dcs_s32_t __dcs_clt_list();
 dcs_s32_t __dcs_clt_rmdir(dcs_s8_t *path);
+dcs_s32_t __dcs_clt_delete1(dcs_s8_t *path);
 dcs_s32_t __dcs_clt_delete(dcs_s8_t *path);
+
 dcs_s32_t check_dir(dcs_s8_t * path);
 #endif

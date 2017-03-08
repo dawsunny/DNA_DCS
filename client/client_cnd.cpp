@@ -153,7 +153,7 @@ dcs_s32_t __dcs_clt_parse_parameter(dcs_s32_t argc, dcs_s8_t **argv)
     }
 
     clt_this_id = atoi(argv[argc-1]);
-    printf("file: %s\npath: %s\noptype: %d\nfiletype: %d\nid: %d\n", clt_pathname, file_tobe_stored, clt_optype, clt_filetype, clt_this_id);
+    //printf("file: %s\npath: %s\noptype: %d\nfiletype: %d\nid: %d\n", clt_pathname, file_tobe_stored, clt_optype, clt_filetype, clt_this_id);
 
     /*
     while((c = getopt(argc, argv, "w:r:l:d:D:t:bf")) != EOF){

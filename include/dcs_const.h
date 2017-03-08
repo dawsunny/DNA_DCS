@@ -67,6 +67,10 @@ enum dcs_comp_type{
 #define MD5_SIZE		16
 #define MD5_STR_LEN		(MD5_SIZE * 2)
 
+#define GB_SIZE (1024*1024*1024)
+#define MB_SIZE (1024*1024)
+#define KB_SIZE (1024)
+
 /*bloom filter size*/
 /*multiple of 4k*/
 #define MASTER_BLOOM_SIZE  (1024*1024*128)

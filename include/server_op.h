@@ -26,6 +26,7 @@ dcs_s32_t get_master_power();
 /*process read server*/
 dcs_s32_t __dcs_read_server(amp_request_t *req);
 dcs_s32_t __dcs_readquery_server(amp_request_t *req);  //bxz
+dcs_s32_t __dcs_list_server(amp_request_t *req);    //bxz
 
 /*process read finish request*/
 dcs_s32_t __dcs_read_finish(dcs_u64_t inode, 
@@ -46,6 +47,7 @@ dcs_s32_t __dcs_server_init_diskinfo();
 /*stateless datarouting use the*/
 dcs_s32_t __dcs_server_stateless_routing(dcs_u8_t *sha);
 
+dcs_s32_t __dcs_delete_server1(amp_request_t *);
 dcs_s32_t __dcs_delete_server(amp_request_t *);
 
 extern map<string, server_hash_t> server_table;

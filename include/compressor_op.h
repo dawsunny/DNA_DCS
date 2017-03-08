@@ -18,6 +18,7 @@ dcs_s32_t __dcs_compressor_process_req(amp_request_t *req, dcs_thread_t *threadp
  * then get the data and do the dcslication*/
 dcs_s32_t __dcs_compressor_write(amp_request_t *req, dcs_thread_t *threadp);
 dcs_s32_t __dcs_compressor_delete(amp_request_t *req);
+dcs_s32_t __dcs_compressor_delete1(amp_request_t *req);
 dcs_s32_t __dcs_compressor_read(amp_request_t *req);
 dcs_s32_t __dcs_compressor_upload(amp_request_t *req);
 /*get sample FPs*/

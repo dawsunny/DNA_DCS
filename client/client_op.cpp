@@ -31,9 +31,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <map>
 using namespace std;
 
 //dcs_file_set *fileset = NULL;
+map<string, client_hash_t> client_table;
+pthread_mutex_t client_table_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /*client operation*/
 dcs_s32_t __dcs_clt_op()
@@ -56,7 +59,7 @@ dcs_s32_t __dcs_clt_op()
             goto EXIT;
         }
     }else if(clt_optype == DCS_LIST){
-        rc = __dcs_clt_list(clt_pathname);
+        rc = __dcs_clt_list();
         if(rc < 0){
             DCS_ERROR("__dcs_clt_op list files err %d \n", rc);
         }
@@ -214,9 +217,225 @@ EXIT:
 	return rc;
 }
 
-dcs_s32_t __dcs_clt_list(dcs_s8_t *path)
+dcs_u64_t str2val(char *msg) {
+    dcs_u64_t res = 0;
+    dcs_u32_t i = 0, len = strlen(msg);
+    for (i = 0; i < len; ++i) {
+        res = res * 10 + msg[i] - '0';
+    }
+    return res;
+}
+
+//bxz
+string transferFilesize(dcs_u64_t filesize) {
+    string res = "";
+    char data[10];
+    memset(data, 0, 10);
+    if (filesize < KB_SIZE) {
+        sprintf(data, "%luB", filesize);
+    } else if (filesize < MB_SIZE) {
+        sprintf(data, "%.1fKB", filesize * 1.0 / KB_SIZE);
+    } else if (filesize < GB_SIZE) {
+        sprintf(data, "%.1fMB", filesize * 1.0 / MB_SIZE);
+    } else {
+        sprintf(data, "%.1fGB", filesize * 1.0 / GB_SIZE);
+    }
+    res = data;
+    return res;
+}
+
+//bxz
+string transferTime(dcs_u64_t timestamp) {
+    string res = "";
+    time_t tick = (time_t)timestamp;
+    struct tm tm = *localtime(&tick);
+    char s[100];
+    memset(s, 0, sizeof(s));
+    strftime(s, sizeof(s), "%Y-%m-%d %H:%M", &tm);
+    res = s;
+    return res;
+}
+
+//bxz
+void transfer2cltHash(dcs_s8_t *msg, dcs_u32_t len) {
+    dcs_u32_t i = 0, cnt = 0;
+    string filename = "";
+    char *p;
+    char *buf = msg;
+    char *token_out = NULL;
+    char *token_in = NULL;
+    
+    while ((p = strtok_r(buf, "\n", &token_out)) != NULL) {
+        buf = p;
+        //printf("out: %s\n", p);
+        while ((p = strtok_r(buf, "\t", &token_in)) != NULL) {
+            //printf("in: %s\n", p);
+            switch (cnt) {
+                case 0:
+                    filename = p;
+                    cnt++;
+                    break;
+                    
+                case 1:
+                    client_table[filename].filesize = transferFilesize(str2val(p));
+                    cnt++;
+                    break;
+                    
+                case 2:
+                    if (strcmp(p, "100") == 0) {
+                        client_table[filename].filetype = "fasta";
+                    } else if (strcmp(p, "200") == 0) {
+                        client_table[filename].filetype = "fastq";
+                    } else {
+                        client_table[filename].filetype = "unknown";
+                    }
+                    cnt++;
+                    break;
+                    
+                case 3:
+                    client_table[filename].timestamp = transferTime(str2val(p));
+                    cnt = 0;
+                    filename = "";
+                    break;
+                    
+                default:
+                    
+                    break;
+            }
+            buf = NULL;
+        }
+        buf = NULL;
+    }
+}
+
+dcs_s32_t __dcs_clt_list()    //bxz
 {
     dcs_s32_t rc = 0;
+    dcs_s32_t i = 0;
+    dcs_u32_t size = 0;
+    dcs_s32_t target_server = -1;
+    dcs_c2s_req_t c2s_datainfo;
+    
+    amp_request_t *req = NULL;
+    amp_message_t *reqmsgp = NULL;
+    amp_message_t *repmsgp = NULL;
+    dcs_msg_t *msgp = NULL;
+    dcs_msg_t *msgp_ack = NULL;
+    map<string, client_hash_t>::iterator it;
+    
+    DCS_ENTER("__dcs_clt_list enter\n");
+    
+    rc = __amp_alloc_request(&req);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_clt_list alloc request error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    c2s_datainfo.size = 1;
+    
+    pthread_mutex_lock(&client_table_lock);
+    client_table.clear();
+    pthread_mutex_unlock(&client_table_lock);
+    
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    reqmsgp = (amp_message_t *)malloc(size);
+    if (reqmsgp == NULL) {
+        DCS_ERROR("__dcs_clt_list malloc for reqmsgp error[%d]\n", errno);
+        rc = errno;
+        goto EXIT;
+    }
+    
+    memset(reqmsgp, 0, size);
+    msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->size = size;
+    msgp->seqno = 0;
+    msgp->msg_type = is_req;
+    msgp->fromid = clt_this_id;
+    msgp->fromtype = DCS_CLIENT;
+    msgp->optype = DCS_LIST;
+    msgp->ack = 0;
+    msgp->u.c2s_req = c2s_datainfo;
+    
+    req->req_iov = NULL;
+    req->req_niov = 0;
+    req->req_msg = reqmsgp;
+    req->req_msglen = size;
+    req->req_need_ack = 1;
+    req->req_resent = 1;
+    req->req_type = AMP_REQUEST | AMP_MSG;
+    
+    for (i = 0; i < DCS_SERVER_NUM; ++i) {
+    SEND_AGAIN:
+        rc = amp_send_sync(clt_comp_context,
+                           req,
+                           DCS_SERVER,
+                           (i + 1),
+                           0);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_clt_list amp send to server error[%d]\n", rc);
+            goto EXIT;
+        }
+        
+        repmsgp = req->req_reply;
+        if (!repmsgp) {
+            DCS_ERROR("__dcs_clt_list cannot recieve msg from server[%d]\n", errno);
+            rc = errno;
+            goto SEND_AGAIN;
+        }
+        
+        msgp_ack = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+        if (msgp_ack->ack == 1) {
+            //read the server hash map
+            if (req->req_iov == NULL) {
+                DCS_ERROR("__dcs_clt_list get no reply data from compressor\n");
+                rc = -1;
+                goto EXIT;
+            }
+            //printf("||||get data:\n%s[%d]\n[%d]\n", (char *)req->req_iov->ak_addr, req->req_iov->ak_len, strlen((char *)req->req_iov->ak_addr));
+            pthread_mutex_lock(&client_table_lock);
+            transfer2cltHash((char *)req->req_iov->ak_addr, req->req_iov->ak_len);
+            pthread_mutex_unlock(&client_table_lock);
+        } else {
+            continue;   //no data in corresponding server
+        }
+    }
+    
+    printf("\n------------------------------------\n\n");
+    if (client_table.size() > 0) {
+        printf("filename\tsize\ttype\tmtime\n");
+        for (it = client_table.begin(); it != client_table.end(); ++it) {
+            cout << it->first << "\t" << it->second.filesize << "\t" << it->second.filetype << "\t" << it->second.timestamp << endl;
+        }
+    } else {
+        printf("NO DATA.\n");
+    }
+    printf("\n------------------------------------\n\n");
+    
+EXIT:
+    if (reqmsgp) {
+        free(reqmsgp);
+        reqmsgp = NULL;
+    }
+    
+    if(repmsgp){
+        free(repmsgp);
+        repmsgp = NULL;
+    }
+    if(req){
+        if(req->req_iov){
+            if (req->req_iov->ak_addr) {
+                req->req_iov->ak_addr = NULL;
+            }
+            free(req->req_iov);
+            req->req_iov = NULL;
+            req->req_niov = 0;
+        }
+        __amp_free_request(req);
+    }
+    
+    DCS_LEAVE("__dcs_clt_list leave\n");
+    return rc;
+    /*
     dcs_s32_t fd = 0;
     dcs_s8_t pathinfo[PATH_LEN];
     dcs_s8_t dirpath[PATH_LEN];
@@ -279,6 +498,7 @@ dcs_s32_t __dcs_clt_list(dcs_s8_t *path)
 
 EXIT:
     return rc;
+     */
 }
 
 /*get filename from a dir
@@ -1319,7 +1539,120 @@ EXIT:
     return rc;
 }
 
-dcs_s32_t __dcs_clt_delete(dcs_s8_t *filename) 
+//by bxz
+dcs_s32_t __dcs_clt_delete(dcs_s8_t *filename) {
+    dcs_s32_t rc = 0;
+    dcs_s32_t i = 0;
+    dcs_u32_t size = 0;
+    dcs_s32_t target_server = -1;
+    
+    amp_request_t *req = NULL;
+    amp_message_t *reqmsgp = NULL;
+    amp_message_t *repmsgp = NULL;
+    dcs_msg_t *msgp = NULL;
+    
+    dcs_c2s_req_t c2s_datainfo;
+    
+    DCS_ENTER("__dcs_clt_delete enter\n");
+    
+    rc = __amp_alloc_request(&req);
+    if (rc < 0) {
+        DCS_ERROR("__dcs_clt_delete alloc request error\n");
+        goto EXIT;
+    }
+    
+    c2s_datainfo.size = strlen(filename);
+    size = AMP_MESSAGE_HEADER_LEN + sizeof(dcs_msg_t);
+    reqmsgp = (amp_message_t *)malloc(size);
+    if (!reqmsgp) {
+        DCS_ERROR("__dcs_clt_delete malloc for reqmsgp error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    memset(reqmsgp, 0, size);
+    
+    msgp = (dcs_msg_t *)((dcs_s8_t *)reqmsgp + AMP_MESSAGE_HEADER_LEN);
+    msgp->seqno = 0;
+    msgp->msg_type = is_req;
+    msgp->fromid = clt_this_id;
+    msgp->fromtype = DCS_CLIENT;
+    msgp->optype = DCS_DELETE;
+    msgp->u.c2s_req = c2s_datainfo;
+    req->req_iov = (amp_kiov_t *)malloc(sizeof(amp_kiov_t));
+    if (req->req_iov == NULL) {
+        DCS_ERROR("__dcs_clt_delete malloc for req_iov error\n");
+        rc = -1;
+        goto EXIT;
+    }
+    memset(req->req_iov, 0, sizeof(amp_kiov_t));
+    req->req_iov->ak_addr = filename;
+    req->req_iov->ak_len = strlen(filename);
+    req->req_iov->ak_offset = 0;
+    req->req_iov->ak_flag = 0;
+    req->req_niov = 1;
+    req->req_msg = reqmsgp;
+    req->req_msglen = size;
+    req->req_need_ack = 1;
+    req->req_resent = 1;
+    req->req_type = AMP_REQUEST | AMP_DATA;
+    
+    for (i = 0; i < DCS_SERVER_NUM; ++i) {
+    SEND_AGAIN:
+        rc = amp_send_sync(clt_comp_context, req, DCS_SERVER, (i + 1), 0);
+        if (rc != 0) {
+            DCS_ERROR("__dcs_clt_delete send to server error\n");
+            goto EXIT;
+        }
+        repmsgp = req->req_reply;
+        if (!repmsgp) {
+            DCS_ERROR("__dcs_clt_delete cannot recieve the reply msg\n");
+            goto SEND_AGAIN;
+        } else {
+            msgp = (dcs_msg_t *)((dcs_s8_t *)repmsgp + AMP_MESSAGE_HEADER_LEN);
+            if (msgp->ack == 0) {
+                continue;
+            }
+            target_server = msgp->fromid;
+            break;
+        }
+    }
+    
+    if (target_server <= 0) {
+        printf("\nDelete file %s failed, please check your filename.\n\n", filename);
+        DCS_ERROR("__dcs_clt_delete cannot delete file: %s\n", filename);
+        rc = -1;
+        goto EXIT;
+    }
+    
+EXIT:
+    if (req) {
+        if (req->req_iov) {
+            if (req->req_iov->ak_addr) {
+                req->req_iov->ak_addr = NULL;
+            }
+            free(req->req_iov);
+            req->req_iov = NULL;
+            req->req_niov = 0;
+        }
+        
+        if (reqmsgp) {
+            free(reqmsgp);
+            reqmsgp = NULL;
+        }
+        
+        if (repmsgp) {
+            free(repmsgp);
+            repmsgp = NULL;
+        }
+        
+        __amp_free_request(req);
+    }
+    
+    DCS_LEAVE("__dcs_clt_delete leave\n");
+    return rc;
+}
+
+dcs_s32_t __dcs_clt_delete1(dcs_s8_t *filename)
 {
     dcs_s32_t rc;
     dcs_u32_t server_id = 0;
@@ -1592,6 +1925,7 @@ dcs_s32_t __dcs_clt_get_read_filename(dcs_s8_t *path, dcs_s8_t *file_tobe_stored
     }
     
     if (target_server <= 0) {
+        printf("\nRead file %s failed, please check your filename.\n\n", path);
         DCS_ERROR("__dcs_clt_get_read_filename cannot fetch the corresponding file: %s\n", path);
         rc = -1;
         goto EXIT;

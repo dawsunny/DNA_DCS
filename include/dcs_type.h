@@ -19,6 +19,14 @@ typedef unsigned long      dcs_u64_t;
 typedef long               dcs_s64_t;
 
 //by bxz
+struct _client_hash
+{
+    string filetype;
+    string filesize;
+    string timestamp;
+};
+typedef struct _client_hash client_hash_t;
+
 struct _server_hash
 {
     dcs_u32_t filetype;
